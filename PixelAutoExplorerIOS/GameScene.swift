@@ -164,8 +164,12 @@ final class GameScene: SKScene {
 
     private let tileSize: CGFloat = 32
     private let renderTileSize: CGFloat = 16
-    private let worldMinX: CGFloat = -3840
-    private let worldMaxX: CGFloat = 3840
+    private let cameraZoom: CGFloat = 1.28
+    private let explorerBaseScale: CGFloat = 1.32
+    private let explorerGroundOffset: CGFloat = 53
+    private let materialCount = 210
+    private let worldMinX: CGFloat = -5600
+    private let worldMaxX: CGFloat = 5600
     private let worldMinY: CGFloat = -760
     private let worldMaxY: CGFloat = 760
     private var surfaceByColumn: [Int: CGFloat] = [:]
@@ -211,6 +215,7 @@ final class GameScene: SKScene {
         addChild(cameraRig)
         cameraRig.addChild(hudNode)
         camera = cameraRig
+        cameraRig.setScale(cameraZoom)
         buildSky()
         buildTerrain()
         buildMaterials()
@@ -476,9 +481,10 @@ final class GameScene: SKScene {
             .herb, .herb,
             .crystal
         ]
-        for index in 0..<145 {
+        for index in 0..<materialCount {
             guard let kind = weightedKinds.randomElement() else { continue }
-            let x = worldMinX + 180 + CGFloat(index) * ((worldMaxX - worldMinX - 360) / 144) + CGFloat.random(in: -54...54)
+            let span = worldMaxX - worldMinX - 440
+            let x = worldMinX + 220 + CGFloat(index) * (span / CGFloat(materialCount - 1)) + CGFloat.random(in: -62...62)
             let y = surfaceY(at: x) + materialYOffset(for: kind)
             let node = makeMaterialNode(kind: kind)
             node.position = CGPoint(x: x, y: y)
@@ -671,7 +677,7 @@ final class GameScene: SKScene {
         }
         summonCount += 1
         let node = makeExplorerNode(index: summonCount)
-        node.position = CGPoint(x: CGFloat.random(in: -20...20), y: surfaceY(at: 0) + 58)
+        node.position = CGPoint(x: CGFloat.random(in: -20...20), y: surfaceY(at: 0) + explorerGroundOffset)
         node.zPosition = 12
         actorLayer.addChild(node)
         let explorer = Explorer(node: node)
@@ -686,40 +692,64 @@ final class GameScene: SKScene {
 
     private func makeExplorerNode(index: Int) -> SKNode {
         let root = SKNode()
-        let robeColors = [
-            SKColor(red: 0.31, green: 0.55, blue: 0.25, alpha: 1),
-            SKColor(red: 0.55, green: 0.42, blue: 0.20, alpha: 1),
-            SKColor(red: 0.25, green: 0.50, blue: 0.35, alpha: 1),
-            SKColor(red: 0.58, green: 0.44, blue: 0.23, alpha: 1)
-        ]
-        let robe = robeColors[(index - 1) % robeColors.count]
-        addPixel(to: root, color: SKColor(red: 0.16, green: 0.10, blue: 0.06, alpha: 1), rect: CGRect(x: -14, y: -40, width: 10, height: 6))
-        addPixel(to: root, color: SKColor(red: 0.16, green: 0.10, blue: 0.06, alpha: 1), rect: CGRect(x: 4, y: -40, width: 10, height: 6))
-        addPixel(to: root, color: SKColor(red: 0.25, green: 0.17, blue: 0.11, alpha: 1), rect: CGRect(x: -11, y: -34, width: 6, height: 17))
-        addPixel(to: root, color: SKColor(red: 0.34, green: 0.22, blue: 0.12, alpha: 1), rect: CGRect(x: 5, y: -34, width: 6, height: 17))
-        addPixel(to: root, color: SKColor(red: 0.08, green: 0.10, blue: 0.14, alpha: 1), rect: CGRect(x: -15, y: -18, width: 28, height: 29))
-        addPixel(to: root, color: robe, rect: CGRect(x: -11, y: -15, width: 20, height: 25))
-        addPixel(to: root, color: SKColor(red: 0.55, green: 0.37, blue: 0.16, alpha: 1), rect: CGRect(x: -13, y: -13, width: 5, height: 22))
-        addPixel(to: root, color: SKColor(red: 0.83, green: 0.60, blue: 0.26, alpha: 1), rect: CGRect(x: 8, y: -10, width: 5, height: 19))
-        addPixel(to: root, color: SKColor(red: 0.90, green: 0.78, blue: 0.42, alpha: 1), rect: CGRect(x: -12, y: -8, width: 24, height: 3))
-        addPixel(to: root, color: SKColor(red: 0.34, green: 0.19, blue: 0.10, alpha: 1), rect: CGRect(x: -3, y: -4, width: 5, height: 5))
-        addPixel(to: root, color: SKColor(red: 0.96, green: 0.72, blue: 0.48, alpha: 1), rect: CGRect(x: -10, y: 10, width: 20, height: 17))
-        addPixel(to: root, color: SKColor(red: 0.74, green: 0.53, blue: 0.22, alpha: 1), rect: CGRect(x: -15, y: 25, width: 30, height: 7))
-        addPixel(to: root, color: SKColor(red: 0.94, green: 0.75, blue: 0.30, alpha: 1), rect: CGRect(x: -9, y: 32, width: 18, height: 5))
-        addPixel(to: root, color: SKColor(white: 0.04, alpha: 1), rect: CGRect(x: -6, y: 18, width: 2, height: 2))
-        addPixel(to: root, color: SKColor(white: 0.04, alpha: 1), rect: CGRect(x: 6, y: 18, width: 2, height: 2))
-        addPixel(to: root, color: SKColor(red: 0.54, green: 0.29, blue: 0.20, alpha: 1), rect: CGRect(x: 4, y: 12, width: 6, height: 2))
-        addPixel(to: root, color: SKColor(red: 0.47, green: 0.30, blue: 0.16, alpha: 1), rect: CGRect(x: 16, y: -24, width: 3, height: 48))
+        let variant = (index - 1).isMultiple(of: 2)
+        let outline = SKColor(red: 0.07, green: 0.08, blue: 0.10, alpha: 1)
+        let black = SKColor(red: 0.03, green: 0.04, blue: 0.05, alpha: 1)
+        let tunic = variant ? SKColor(red: 0.35, green: 0.44, blue: 0.47, alpha: 1) : SKColor(red: 0.30, green: 0.39, blue: 0.43, alpha: 1)
+        let tunicDark = SKColor(red: 0.18, green: 0.27, blue: 0.30, alpha: 1)
+        let hoodLight = SKColor(red: 0.78, green: 0.90, blue: 0.91, alpha: 1)
+        let hoodMid = SKColor(red: 0.56, green: 0.71, blue: 0.74, alpha: 1)
+        let hoodDark = SKColor(red: 0.22, green: 0.26, blue: 0.29, alpha: 1)
+        let skin = SKColor(red: 0.84, green: 0.63, blue: 0.52, alpha: 1)
+        let purple = variant ? SKColor(red: 0.45, green: 0.32, blue: 0.56, alpha: 1) : SKColor(red: 0.50, green: 0.38, blue: 0.63, alpha: 1)
+        let purpleDark = SKColor(red: 0.31, green: 0.22, blue: 0.42, alpha: 1)
+        let metal = SKColor(red: 0.72, green: 0.77, blue: 0.80, alpha: 1)
+        let metalLight = SKColor(red: 0.93, green: 0.97, blue: 0.98, alpha: 1)
+        let wood = SKColor(red: 0.46, green: 0.32, blue: 0.23, alpha: 1)
+
+        addPixel(to: root, color: purpleDark, rect: CGRect(x: 12, y: -29, width: 13, height: 34))
+        addPixel(to: root, color: purple, rect: CGRect(x: 21, y: -35, width: 9, height: 20))
+        addPixel(to: root, color: purple, rect: CGRect(x: 9, y: -1, width: 8, height: 10))
+        addPixel(to: root, color: black, rect: CGRect(x: -14, y: -40, width: 10, height: 6))
+        addPixel(to: root, color: black, rect: CGRect(x: 4, y: -40, width: 10, height: 6))
+        addPixel(to: root, color: tunicDark, rect: CGRect(x: -11, y: -34, width: 6, height: 17))
+        addPixel(to: root, color: hoodDark, rect: CGRect(x: 5, y: -34, width: 6, height: 17))
+        addPixel(to: root, color: outline, rect: CGRect(x: -15, y: -18, width: 28, height: 30))
+        addPixel(to: root, color: tunic, rect: CGRect(x: -11, y: -15, width: 20, height: 25))
+        addPixel(to: root, color: hoodMid, rect: CGRect(x: -13, y: -13, width: 5, height: 22))
+        addPixel(to: root, color: purple, rect: CGRect(x: 8, y: -10, width: 5, height: 20))
+        addPixel(to: root, color: outline, rect: CGRect(x: -12, y: -8, width: 24, height: 3))
+        addPixel(to: root, color: SKColor(red: 0.94, green: 0.94, blue: 0.90, alpha: 1), rect: CGRect(x: -4, y: -4, width: 10, height: 4))
+        addPixel(to: root, color: skin, rect: CGRect(x: -10, y: 10, width: 22, height: 17))
+        addPixel(to: root, color: hoodLight, rect: CGRect(x: -10, y: 12, width: 18, height: 12))
+        addPixel(to: root, color: hoodMid, rect: CGRect(x: -16, y: 8, width: 8, height: 18))
+        addPixel(to: root, color: hoodMid, rect: CGRect(x: 9, y: 9, width: 8, height: 15))
+        addPixel(to: root, color: black, rect: CGRect(x: -13, y: 18, width: 6, height: 9))
+        addPixel(to: root, color: hoodDark, rect: CGRect(x: 8, y: 18, width: 9, height: 9))
+        addPixel(to: root, color: hoodMid, rect: CGRect(x: -15, y: 25, width: 30, height: 7))
+        addPixel(to: root, color: hoodLight, rect: CGRect(x: -10, y: 32, width: 20, height: 6))
+        addPixel(to: root, color: black, rect: CGRect(x: -5, y: 18, width: 3, height: 4))
+        addPixel(to: root, color: SKColor(red: 0.96, green: 0.98, blue: 1.0, alpha: 1), rect: CGRect(x: 5, y: 18, width: 2, height: 4))
+        addPixel(to: root, color: SKColor(red: 0.48, green: 0.29, blue: 0.26, alpha: 1), rect: CGRect(x: 6, y: 12, width: 6, height: 2))
         for step in 0..<5 {
             let offset = CGFloat(step)
-            addPixel(to: root, color: SKColor(red: 0.47, green: 0.30, blue: 0.16, alpha: 1), rect: CGRect(x: 18 + offset * 2, y: 18 + offset * 5, width: 4, height: 4))
+            addPixel(to: root, color: purpleDark, rect: CGRect(x: 4 + offset * 5, y: 38 + offset * 4, width: 4, height: 4))
         }
-        addPixel(to: root, color: SKColor(red: 0.68, green: 0.72, blue: 0.74, alpha: 1), rect: CGRect(x: 27, y: 47, width: 13, height: 5))
-        addPixel(to: root, color: SKColor(red: 0.86, green: 0.91, blue: 0.92, alpha: 1), rect: CGRect(x: 35, y: 43, width: 5, height: 9))
-        addPixel(to: root, color: SKColor(red: 0.42, green: 0.48, blue: 0.50, alpha: 1), rect: CGRect(x: 22, y: 46, width: 5, height: 8))
-        addPixel(to: root, color: SKColor(red: 0.49, green: 0.30, blue: 0.18, alpha: 1), rect: CGRect(x: -16, y: -18, width: 5, height: 12))
-        addPixel(to: root, color: SKColor(red: 0.88, green: 0.70, blue: 0.34, alpha: 1), rect: CGRect(x: -14, y: 51, width: 4, height: 4))
-        root.setScale(1.45)
+        for step in 0..<4 {
+            let offset = CGFloat(step)
+            addPixel(to: root, color: purple, rect: CGRect(x: 7 + offset * 5, y: 41 + offset * -2, width: 4, height: 4))
+        }
+        addPixel(to: root, color: outline, rect: CGRect(x: -17, y: -17, width: 5, height: 13))
+        addPixel(to: root, color: skin, rect: CGRect(x: 13, y: -14, width: 5, height: 13))
+        addPixel(to: root, color: wood, rect: CGRect(x: 16, y: -24, width: 3, height: 48))
+        for step in 0..<5 {
+            let offset = CGFloat(step)
+            addPixel(to: root, color: wood, rect: CGRect(x: 18 + offset * 2, y: 18 + offset * 5, width: 4, height: 4))
+        }
+        addPixel(to: root, color: metal, rect: CGRect(x: 27, y: 47, width: 14, height: 5))
+        addPixel(to: root, color: metalLight, rect: CGRect(x: 35, y: 43, width: 5, height: 9))
+        addPixel(to: root, color: hoodDark, rect: CGRect(x: 22, y: 46, width: 5, height: 8))
+        root.setScale(explorerBaseScale)
         return root
     }
 
@@ -793,7 +823,7 @@ final class GameScene: SKScene {
         if explorer.scoutTarget == nil || explorer.node.position.distance(to: explorer.scoutTarget ?? .zero) < 40 {
             let direction: CGFloat = Bool.random() ? 1 : -1
             let x = (explorer.node.position.x + direction * CGFloat.random(in: 360...820)).clamped(to: worldMinX + 80...worldMaxX - 80)
-            explorer.scoutTarget = CGPoint(x: x, y: surfaceY(at: x) + 58)
+            explorer.scoutTarget = CGPoint(x: x, y: surfaceY(at: x) + explorerGroundOffset)
         }
         if let point = explorer.scoutTarget {
             explorer.status = "SCOUT"
@@ -828,22 +858,22 @@ final class GameScene: SKScene {
     }
 
     private func snapExplorerToGround(_ explorer: Explorer) {
-        let groundY = surfaceY(at: explorer.node.position.x) + 58
+        let groundY = surfaceY(at: explorer.node.position.x) + explorerGroundOffset
         explorer.node.position.y += (groundY - explorer.node.position.y) * 0.18
     }
 
     private func animate(_ explorer: Explorer) {
-        explorer.node.xScale = explorer.facing * 1.45
+        explorer.node.xScale = explorer.facing * explorerBaseScale
         switch explorer.action {
         case .walk:
             let step = abs(sin(explorer.walkClock * 10))
-            explorer.node.yScale = 1.45 + step * 0.018
+            explorer.node.yScale = explorerBaseScale + step * 0.016
             explorer.node.zRotation = sin(explorer.walkClock * 10) * 0.012 * explorer.facing
         case .chop:
-            explorer.node.yScale = 1.45
+            explorer.node.yScale = explorerBaseScale
             explorer.node.zRotation = sin(explorer.gatherTimer * 22) * 0.075 * explorer.facing
         case .idle:
-            explorer.node.yScale = 1.45
+            explorer.node.yScale = explorerBaseScale
             explorer.node.zRotation = 0
         }
     }
@@ -887,8 +917,8 @@ final class GameScene: SKScene {
         } else {
             focus = CGPoint(x: 0, y: surfaceY(at: 0) + 80)
         }
-        let halfWidth = max(160, size.width / 2)
-        let halfHeight = max(260, size.height / 2)
+        let halfWidth = max(160, size.width * cameraZoom / 2)
+        let halfHeight = max(260, size.height * cameraZoom / 2)
         let x = focus.x.clamped(to: worldMinX + halfWidth...worldMaxX - halfWidth)
         let y = (focus.y + 72).clamped(to: worldMinY + halfHeight...worldMaxY - halfHeight)
         cameraRig.position = CGPoint(x: x, y: y)

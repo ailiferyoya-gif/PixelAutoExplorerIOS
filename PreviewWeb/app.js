@@ -21,10 +21,49 @@ const kinds = {
   crystal: { title: "CRYSTAL", color: "#66ebf2", min: 1, max: 3, weight: 1 }
 };
 
+const woodcutterPalettes = [
+  {
+    outline: "#111419",
+    black: "#090b0e",
+    boot: "#15191f",
+    tunic: "#587078",
+    tunicDark: "#2f454c",
+    hoodLight: "#c8e6e8",
+    hoodMid: "#8fb6bc",
+    hoodDark: "#394248",
+    skin: "#d6a184",
+    purple: "#72528d",
+    purpleDark: "#4e386a",
+    metal: "#b9c4cc",
+    metalLight: "#eef7f8",
+    wood: "#75513a",
+    belt: "#f2f2e8"
+  },
+  {
+    outline: "#111419",
+    black: "#090b0e",
+    boot: "#161a20",
+    tunic: "#4d626d",
+    tunicDark: "#263d46",
+    hoodLight: "#d1e9ec",
+    hoodMid: "#94bdc3",
+    hoodDark: "#343d44",
+    skin: "#d8a78b",
+    purple: "#8062a0",
+    purpleDark: "#513a72",
+    metal: "#b8c2cb",
+    metalLight: "#eff9fb",
+    wood: "#7b573c",
+    belt: "#f4f1e5"
+  }
+];
+
 const weightedKinds = Object.entries(kinds).flatMap(([key, data]) => Array(data.weight).fill(key));
+const materialCount = 210;
+
 const world = {
-  minX: -3840,
-  maxX: 3840,
+  minX: -5600,
+  maxX: 5600,
   minY: -760,
   maxY: 760,
   tile: 32
@@ -32,6 +71,10 @@ const world = {
 
 const terrain = {
   cell: 16
+};
+
+const view = {
+  scale: 0.74
 };
 
 const state = {
@@ -80,10 +123,10 @@ function materialY(kind, x) {
 
 function createMaterials() {
   state.materials = [];
-  for (let i = 0; i < 145; i += 1) {
+  for (let i = 0; i < materialCount; i += 1) {
     const kind = weightedKinds[randInt(0, weightedKinds.length - 1)];
     const data = kinds[kind];
-    const x = world.minX + 180 + i * ((world.maxX - world.minX - 360) / 144) + rand(-54, 54);
+    const x = world.minX + 220 + i * ((world.maxX - world.minX - 440) / (materialCount - 1)) + rand(-62, 62);
     state.materials.push({
       id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${i}`,
       kind,
@@ -205,7 +248,7 @@ function summonExplorer() {
     face: 1,
     action: "idle",
     status: "TREE SEARCH",
-    color: ["#4f8d3f", "#8f6a32", "#3d7f58", "#9a743c"][(state.summons - 1) % 4]
+    palette: woodcutterPalettes[(state.summons - 1) % woodcutterPalettes.length]
   };
   state.explorers.push(explorer);
   playSfx("summon");
@@ -327,8 +370,8 @@ function updateExplorers(dt) {
 
 function updateCamera() {
   const focus = state.explorers[0] || { x: 0, y: surfaceY(0) + 80 };
-  const halfW = Math.max(160, window.innerWidth / 2);
-  const halfH = Math.max(260, window.innerHeight / 2);
+  const halfW = Math.max(160, visibleWorldHalfWidth());
+  const halfH = Math.max(260, visibleWorldHalfHeight());
   const tx = clamp(focus.x, world.minX + halfW, world.maxX - halfW);
   const ty = clamp(focus.y + 72, world.minY + halfH, world.maxY - halfH);
   state.camera.x += (tx - state.camera.x) * 0.12;
@@ -349,15 +392,25 @@ function updatePopups(dt) {
 
 function worldToScreen(x, y) {
   return {
-    x: Math.round(window.innerWidth / 2 + x - state.camera.x),
-    y: Math.round(window.innerHeight / 2 - (y - state.camera.y))
+    x: Math.round(window.innerWidth / 2 + (x - state.camera.x) * view.scale),
+    y: Math.round(window.innerHeight / 2 - (y - state.camera.y) * view.scale)
   };
+}
+
+function visibleWorldHalfWidth() {
+  return window.innerWidth / (view.scale * 2);
+}
+
+function visibleWorldHalfHeight() {
+  return window.innerHeight / (view.scale * 2);
 }
 
 function drawRectWorld(x, y, w, h, color) {
   const p = worldToScreen(x, y);
+  const scaledW = Math.max(1, Math.round(w * view.scale));
+  const scaledH = Math.max(1, Math.round(h * view.scale));
   ctx.fillStyle = color;
-  ctx.fillRect(Math.round(p.x - w / 2), Math.round(p.y - h / 2), w, h);
+  ctx.fillRect(Math.round(p.x - scaledW / 2), Math.round(p.y - scaledH / 2), scaledW, scaledH);
 }
 
 function drawRectFromGround(x, groundY, bottom, w, h, color) {
@@ -468,7 +521,7 @@ function drawBackgroundLandmarks() {
     { type: "house", x: 1160, width: 78, height: 32, roof: "#9a371e", wall: "#eadcca" }
   ];
   for (const item of items) {
-    if (Math.abs(item.x - state.camera.x) > window.innerWidth / 2 + 260) continue;
+    if (Math.abs(item.x - state.camera.x) > visibleWorldHalfWidth() + 340) continue;
     const groundY = surfaceY(item.x) + 2;
     if (item.type === "house") drawPixelHouse(item.x, groundY, item.width, item.height, item.roof, item.wall, item.x);
     if (item.type === "church") drawChurch(item.x, groundY);
@@ -541,7 +594,7 @@ function drawFineTerrainCell(x, y, surface, column, row) {
   const depth = surface - y;
   const p = worldToScreen(x, y);
   const palette = terrainPalette(depth, column, row);
-  const size = terrain.cell;
+  const size = Math.max(2, Math.round(terrain.cell * view.scale));
   ctx.fillStyle = palette.outer;
   ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
   ctx.fillStyle = palette.inner;
@@ -570,8 +623,9 @@ function drawFineTerrainCell(x, y, surface, column, row) {
 }
 
 function drawTerrain() {
-  const start = Math.floor((state.camera.x - window.innerWidth / 2 - 80) / terrain.cell);
-  const end = Math.ceil((state.camera.x + window.innerWidth / 2 + 80) / terrain.cell);
+  const half = visibleWorldHalfWidth();
+  const start = Math.floor((state.camera.x - half - 120) / terrain.cell);
+  const end = Math.ceil((state.camera.x + half + 120) / terrain.cell);
   const yStart = Math.floor(world.minY / terrain.cell) * terrain.cell;
   for (let column = start; column <= end; column += 1) {
     const x = column * terrain.cell;
@@ -658,44 +712,55 @@ function drawExplorer(explorer) {
   const footY = explorer.y - 58;
   const bodyY = footY + (walking ? Math.abs(walk) * 1.5 : 0);
   const face = explorer.face;
+  const palette = explorer.palette || woodcutterPalettes[0];
   const leftLift = walking ? Math.max(0, walk) * 4 : 0;
   const rightLift = walking ? Math.max(0, -walk) * 4 : 0;
   const leftStep = walking ? -walk * face * 3 : 0;
   const rightStep = walking ? walk * face * 3 : 0;
   const leftFootX = x - 9 + leftStep;
   const rightFootX = x + 8 + rightStep;
-  drawRectFromGround(leftFootX, footY, leftLift, 8, 6, "#2a1b12");
-  drawRectFromGround(rightFootX, footY, rightLift, 8, 6, "#2a1b12");
-  drawRectFromGround(leftFootX + 1, footY, 6 + leftLift, 6, 17 - leftLift * 0.45, "#3f2b1c");
-  drawRectFromGround(rightFootX - 1, footY, 6 + rightLift, 6, 17 - rightLift * 0.45, "#57381f");
-  drawRectFromGround(x - 1, bodyY, 22, 28, 28, "#1a1710");
-  drawRectFromGround(x - 2, bodyY, 24, 20, 24, explorer.color);
-  drawRectFromGround(x - 9, bodyY, 25, 5, 21, "#8b5d2a");
-  drawRectFromGround(x + 8, bodyY, 27, 5, 18, "#d39a45");
-  drawRectFromGround(x, bodyY, 32, 24, 3, "#e6c76a");
-  drawRectFromGround(x - 2, bodyY, 35, 5, 5, "#5c351d");
-  drawRectFromGround(x - 1, bodyY, 47, 21, 17, "#f3b978");
-  drawRectFromGround(x - 11, bodyY, 43, 5, 12, "#4a2a19");
-  drawRectFromGround(x + 10, bodyY, 43, 5, 12, "#4a2a19");
-  drawRectFromGround(x - 1, bodyY, 59, 30, 6, "#c7903b");
-  drawRectFromGround(x - 1, bodyY, 65, 22, 5, "#f0c45b");
-  drawRectFromGround(x - 1, bodyY, 71, 14, 5, "#8a5a24");
-  drawRectFromGround(x - 5 * face, bodyY, 54, 2, 2, "#090909");
-  drawRectFromGround(x + 5 * face, bodyY, 54, 2, 2, "#090909");
-  drawRectFromGround(x + 7 * face, bodyY, 49, 6, 2, "#8a4a32");
-  drawRectFromGround(x - 15, bodyY, 24, 5, 12, "#7c4c2d");
-  drawRectFromGround(x + 13, bodyY, 26, 5, 12, "#f3b978");
+  const capeSwing = walking ? walk * 1.5 : 0;
+
+  drawRectFromGround(x + 18 + capeSwing, bodyY, 8, 13, 34, palette.purpleDark);
+  drawRectFromGround(x + 24 + capeSwing, bodyY, 2, 9, 20, palette.purple);
+  drawRectFromGround(x + 13 + capeSwing, bodyY, 36, 8, 10, palette.purple);
+
+  drawRectFromGround(leftFootX, footY, leftLift, 9, 6, palette.black);
+  drawRectFromGround(rightFootX, footY, rightLift, 9, 6, palette.black);
+  drawRectFromGround(leftFootX + 1, footY, 6 + leftLift, 6, 17 - leftLift * 0.45, palette.tunicDark);
+  drawRectFromGround(rightFootX - 1, footY, 6 + rightLift, 6, 17 - rightLift * 0.45, palette.hoodDark);
+  drawRectFromGround(x - 1, bodyY, 21, 28, 30, palette.outline);
+  drawRectFromGround(x - 2, bodyY, 24, 20, 25, palette.tunic);
+  drawRectFromGround(x - 9, bodyY, 25, 5, 22, palette.hoodMid);
+  drawRectFromGround(x + 8, bodyY, 27, 5, 20, palette.purple);
+  drawRectFromGround(x - 1, bodyY, 32, 23, 3, palette.outline);
+  drawRectFromGround(x + 1, bodyY, 35, 10, 4, palette.belt);
+  drawRectFromGround(x - 1, bodyY, 47, 22, 17, palette.skin);
+  drawRectFromGround(x - 1, bodyY, 49, 17, 12, palette.hoodLight);
+  drawRectFromGround(x - 11, bodyY, 45, 7, 18, palette.hoodMid);
+  drawRectFromGround(x + 10, bodyY, 46, 7, 15, palette.hoodMid);
+  drawRectFromGround(x - 12, bodyY, 55, 6, 9, palette.black);
+  drawRectFromGround(x + 8, bodyY, 55, 9, 9, palette.hoodDark);
+  drawRectFromGround(x - 1, bodyY, 60, 29, 7, palette.hoodMid);
+  drawRectFromGround(x - 1, bodyY, 66, 20, 6, palette.hoodLight);
+  drawRectFromGround(x - 4 * face, bodyY, 54, 3, 4, palette.black);
+  drawRectFromGround(x + 5 * face, bodyY, 54, 2, 4, "#f4f8ff");
+  drawRectFromGround(x + 8 * face, bodyY, 49, 6, 2, "#7a4b43");
+  drawPixelStepsFromGround(x + 4, bodyY, 70, 5, 5, 4, 4, palette.purpleDark);
+  drawPixelStepsFromGround(x + 6, bodyY, 73, 4, 5, -2, 4, palette.purple);
+  drawRectFromGround(x - 15, bodyY, 24, 5, 13, palette.black);
+  drawRectFromGround(x + 13, bodyY, 26, 5, 13, palette.skin);
   const axeBaseX = x + 14 * face;
   if (explorer.action === "chop") {
     const raised = chop > 0 ? 1 : -1;
-    drawPixelStepsFromGround(axeBaseX, bodyY, 24 + raised * 6, 8, 3 * face, 5 * raised, 3, "#7a4d28");
-    drawRectFromGround(x + 36 * face, bodyY, 51 + raised * 17, 13, 5, "#aeb8be");
-    drawRectFromGround(x + 42 * face, bodyY, 47 + raised * 17, 6, 9, "#dbe7ea");
-    drawRectFromGround(x + 30 * face, bodyY, 50 + raised * 17, 5, 8, "#6f7b82");
+    drawPixelStepsFromGround(axeBaseX, bodyY, 24 + raised * 6, 8, 3 * face, 5 * raised, 3, palette.wood);
+    drawRectFromGround(x + 36 * face, bodyY, 51 + raised * 17, 14, 5, palette.metal);
+    drawRectFromGround(x + 42 * face, bodyY, 47 + raised * 17, 6, 9, palette.metalLight);
+    drawRectFromGround(x + 30 * face, bodyY, 50 + raised * 17, 5, 8, palette.hoodDark);
   } else {
-    drawPixelStepsFromGround(axeBaseX, bodyY, 18, 8, 2 * face, 5, 3, "#7a4d28");
-    drawRectFromGround(x + 28 * face, bodyY, 57, 12, 5, "#aeb8be");
-    drawRectFromGround(x + 34 * face, bodyY, 53, 5, 9, "#dbe7ea");
+    drawPixelStepsFromGround(axeBaseX, bodyY, 18, 8, 2 * face, 5, 3, palette.wood);
+    drawRectFromGround(x + 28 * face, bodyY, 57, 13, 5, palette.metal);
+    drawRectFromGround(x + 34 * face, bodyY, 53, 5, 9, palette.metalLight);
   }
   if (explorer.action === "chop" && chop < -0.25) {
     drawRectFromGround(x + 38 * face, bodyY, 22, 3, 3, "#f4d29b");
@@ -720,7 +785,7 @@ function draw() {
   drawBackground();
   drawTerrain();
   for (const material of state.materials) {
-    const visible = Math.abs(material.x - state.camera.x) < window.innerWidth / 2 + 90;
+    const visible = Math.abs(material.x - state.camera.x) < visibleWorldHalfWidth() + 160;
     if (visible) drawMaterial(material);
   }
   drawGate();

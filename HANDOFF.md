@@ -13,12 +13,13 @@
 - Cache-bypassed reference-density preview: `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/reference-density.html`
 - Latest live-verified art commit: `13b102d`
 - Latest live-verified woodcutter commit: `c7ec254`
+- Latest live-verified foot-animation commit: `379ed25`
 
 ## Implemented
 
 - Large side-view generated pixel field.
 - Summon gate and `SUMMON` button.
-- First summoned explorer is free; additional explorers cost 8 wood and 5 stone.
+- First summoned woodcutter is free; additional woodcutters cost 12 wood.
 - Explorers automatically pick material targets, walk across the field, gather, and continue.
 - Materials: wood, stone, ore, herb, crystal.
 - HUD: explorer count, current status, field/node count, resource counters.
@@ -33,6 +34,7 @@
 - Reference-density pass added leafy tree clusters, smaller sky clouds, terrain speckles, and seamless terrain fills so the scene reads closer to dense 2D pixel action games.
 - Ultra-fine pass added 16px terrain cells with 2px highlights/shadows, tiny moss and stone flecks, visible background houses/graves/church silhouettes, denser leafy trees, and smaller explorer equipment details.
 - Woodcutter pass makes summoned units target only wood, changes repeat summon cost to 12 wood, adds walking/chopping states, axe visuals, tree shake/sawdust, and procedural SE for summon, steps, chopping, collect, and denied summon.
+- Foot-animation pass keeps the boots grounded, alternates foot lift/step during walking, moves body/axe from a separate body baseline, and softens the native iOS walk tilt.
 
 ## Backup
 
@@ -45,6 +47,7 @@
 - A pre-preview-alias backup was created before adding the cache-bypassed Pages entry.
 - A pre-ultra-fine-pixels backup was created before the latest reference-image granularity pass.
 - A pre-woodcutter-actions-se backup was created before adding the woodcutter specialization, animations, and SE.
+- A pre-foot-animation-fix backup was created before correcting the woodcutter walking foot motion.
 
 ## Verification
 
@@ -57,6 +60,8 @@
 - GitHub Pages `reference-density.html` loaded the cache-bypassed art, summoned an explorer, collected materials, and reported no console errors.
 - GitHub Pages default preview loaded `app.js?v=ultra-fine-20260705`, summoned an explorer, collected materials, and reported no console errors.
 - GitHub Pages default preview loaded `app.js?v=woodcutter-actions-20260706`, summoned a woodcutter, entered `CHOP WOOD`, collected only wood, and reported no console errors.
+- Local D-drive preview loaded `app.js?v=footfix-20260706`, summoned a woodcutter, entered `CHOP WOOD`, and reported no console errors.
+- GitHub Pages default preview loaded `app.js?v=footfix-20260706`, summoned a woodcutter, entered `CHOP WOOD`, and reported no console errors.
 - GitHub Pages live URL was rechecked after the fine-pixel grounding pass.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.

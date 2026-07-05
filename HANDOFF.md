@@ -15,6 +15,7 @@
 - Latest live-verified woodcutter commit: `c7ec254`
 - Latest live-verified foot-animation commit: `379ed25`
 - Latest live-verified scale and palette commit: `d2e7123`
+- Latest live-verified Japanese role summon commit: `1cd29bb`
 
 ## Implemented
 
@@ -37,6 +38,9 @@
 - Woodcutter pass makes summoned units target only wood, changes repeat summon cost to 12 wood, adds walking/chopping states, axe visuals, tree shake/sawdust, and procedural SE for summon, steps, chopping, collect, and denied summon.
 - Foot-animation pass keeps the boots grounded, alternates foot lift/step during walking, moves body/axe from a separate body baseline, and softens the native iOS walk tilt.
 - Scale and palette pass expands the field to 11200px, increases material nodes to 210, zooms the web view to 0.74 scale, zooms out the iOS camera, and changes woodcutters to a pale blue-gray hood, black boots, teal tunic, purple cape/plume, and silver axe palette.
+- Japanese role pass reduces character art to about half tree height (`actorScale` / `explorerBaseScale` 0.58), translates the Web and SpriteKit HUDs to Japanese, and adds role selection before summon.
+- Summonable roles are now `木こり`, `掘り師`, and `冒険者`; they target wood, stone/ore, and herb/crystal respectively.
+- Role-specific actions and feedback were added: chopping, digging, and adventuring statuses, tools, movement speeds, gathering times, and procedural SE.
 
 ## Backup
 
@@ -51,6 +55,7 @@
 - A pre-woodcutter-actions-se backup was created before adding the woodcutter specialization, animations, and SE.
 - A pre-foot-animation-fix backup was created before correcting the woodcutter walking foot motion.
 - A pre-scale-character-palette backup was created before shrinking the world presentation and changing the woodcutter palette.
+- A pre-roles-ja-scale backup was created before reducing the character scale further, translating UI, and adding the digger/adventurer roles.
 
 ## Verification
 
@@ -69,6 +74,11 @@
 - Mobile-width browser preview loaded `app.js?v=scale-palette-20260706`, summoned a woodcutter, and reported no console errors.
 - Local D-drive preview loaded `app.js?v=scale-palette-20260706`, summoned a woodcutter, and reported no console errors.
 - GitHub Pages default preview loaded `app.js?v=scale-palette-20260706`, summoned a woodcutter, and reported no console errors.
+- `PreviewWeb/app.js` passed `node --check` after the Japanese role summon pass.
+- `PixelAutoExplorerIOS/GameScene.swift` passed a local brace/paren structure check after the Japanese role summon pass.
+- Local browser preview loaded `app.js?v=roles-ja-scale-20260706`, showed Japanese HUD text, selected and summoned `木こり`, `掘り師`, and `冒険者`, and reported no console errors.
+- Local D-drive browser preview loaded `app.js?v=roles-ja-scale-20260706`, selected and summoned all three roles, and reported no console errors.
+- GitHub Pages default preview loaded `app.js?v=roles-ja-scale-20260706`, selected and summoned all three roles, showed `フィールド 11200px / 素材 210`, and reported no console errors.
 - GitHub Pages live URL was rechecked after the fine-pixel grounding pass.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.
@@ -78,6 +88,6 @@
 
 - Build once in Xcode on macOS and fix any compiler warnings.
 - Add offline save/load for inventory, explorer count, and depleted material nodes.
-- Add a proper summon roster and explorer traits.
+- Expand role progression with levels, traits, and unlock costs.
 - Add deeper terrain layers, caves, and return-to-base delivery loops.
 - If image assets become necessary, generate individual transparent PNGs with ChatGPT first; do not use sprite sheets without confirmation.

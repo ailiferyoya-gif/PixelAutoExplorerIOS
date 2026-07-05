@@ -652,46 +652,54 @@ function drawGate() {
 
 function drawExplorer(explorer) {
   const x = explorer.x;
-  const walk = explorer.action === "walk" ? Math.sin(explorer.clock * 12) : 0;
+  const walking = explorer.action === "walk";
+  const walk = walking ? Math.sin(explorer.clock * 10) : 0;
   const chop = explorer.action === "chop" ? Math.sin(explorer.gather * 22) : 0;
-  const footY = explorer.y - 58 + Math.sin(explorer.clock * 10) * 2;
+  const footY = explorer.y - 58;
+  const bodyY = footY + (walking ? Math.abs(walk) * 1.5 : 0);
   const face = explorer.face;
-  drawRectFromGround(x - 10 - walk * 2, footY, 0, 8, 6, "#2a1b12");
-  drawRectFromGround(x + 7 + walk * 2, footY, 0, 8, 6, "#2a1b12");
-  drawRectFromGround(x - 9 + walk * 1.5, footY, 6, 6, 17, "#3f2b1c");
-  drawRectFromGround(x + 8 - walk * 1.5, footY, 6, 6, 17, "#57381f");
-  drawRectFromGround(x - 1, footY, 22, 28, 28, "#1a1710");
-  drawRectFromGround(x - 2, footY, 24, 20, 24, explorer.color);
-  drawRectFromGround(x - 9, footY, 25, 5, 21, "#8b5d2a");
-  drawRectFromGround(x + 8, footY, 27, 5, 18, "#d39a45");
-  drawRectFromGround(x, footY, 32, 24, 3, "#e6c76a");
-  drawRectFromGround(x - 2, footY, 35, 5, 5, "#5c351d");
-  drawRectFromGround(x - 1, footY, 47, 21, 17, "#f3b978");
-  drawRectFromGround(x - 11, footY, 43, 5, 12, "#4a2a19");
-  drawRectFromGround(x + 10, footY, 43, 5, 12, "#4a2a19");
-  drawRectFromGround(x - 1, footY, 59, 30, 6, "#c7903b");
-  drawRectFromGround(x - 1, footY, 65, 22, 5, "#f0c45b");
-  drawRectFromGround(x - 1, footY, 71, 14, 5, "#8a5a24");
-  drawRectFromGround(x - 5 * face, footY, 54, 2, 2, "#090909");
-  drawRectFromGround(x + 5 * face, footY, 54, 2, 2, "#090909");
-  drawRectFromGround(x + 7 * face, footY, 49, 6, 2, "#8a4a32");
-  drawRectFromGround(x - 15, footY, 24, 5, 12, "#7c4c2d");
-  drawRectFromGround(x + 13, footY, 26, 5, 12, "#f3b978");
+  const leftLift = walking ? Math.max(0, walk) * 4 : 0;
+  const rightLift = walking ? Math.max(0, -walk) * 4 : 0;
+  const leftStep = walking ? -walk * face * 3 : 0;
+  const rightStep = walking ? walk * face * 3 : 0;
+  const leftFootX = x - 9 + leftStep;
+  const rightFootX = x + 8 + rightStep;
+  drawRectFromGround(leftFootX, footY, leftLift, 8, 6, "#2a1b12");
+  drawRectFromGround(rightFootX, footY, rightLift, 8, 6, "#2a1b12");
+  drawRectFromGround(leftFootX + 1, footY, 6 + leftLift, 6, 17 - leftLift * 0.45, "#3f2b1c");
+  drawRectFromGround(rightFootX - 1, footY, 6 + rightLift, 6, 17 - rightLift * 0.45, "#57381f");
+  drawRectFromGround(x - 1, bodyY, 22, 28, 28, "#1a1710");
+  drawRectFromGround(x - 2, bodyY, 24, 20, 24, explorer.color);
+  drawRectFromGround(x - 9, bodyY, 25, 5, 21, "#8b5d2a");
+  drawRectFromGround(x + 8, bodyY, 27, 5, 18, "#d39a45");
+  drawRectFromGround(x, bodyY, 32, 24, 3, "#e6c76a");
+  drawRectFromGround(x - 2, bodyY, 35, 5, 5, "#5c351d");
+  drawRectFromGround(x - 1, bodyY, 47, 21, 17, "#f3b978");
+  drawRectFromGround(x - 11, bodyY, 43, 5, 12, "#4a2a19");
+  drawRectFromGround(x + 10, bodyY, 43, 5, 12, "#4a2a19");
+  drawRectFromGround(x - 1, bodyY, 59, 30, 6, "#c7903b");
+  drawRectFromGround(x - 1, bodyY, 65, 22, 5, "#f0c45b");
+  drawRectFromGround(x - 1, bodyY, 71, 14, 5, "#8a5a24");
+  drawRectFromGround(x - 5 * face, bodyY, 54, 2, 2, "#090909");
+  drawRectFromGround(x + 5 * face, bodyY, 54, 2, 2, "#090909");
+  drawRectFromGround(x + 7 * face, bodyY, 49, 6, 2, "#8a4a32");
+  drawRectFromGround(x - 15, bodyY, 24, 5, 12, "#7c4c2d");
+  drawRectFromGround(x + 13, bodyY, 26, 5, 12, "#f3b978");
   const axeBaseX = x + 14 * face;
   if (explorer.action === "chop") {
     const raised = chop > 0 ? 1 : -1;
-    drawPixelStepsFromGround(axeBaseX, footY, 24 + raised * 6, 8, 3 * face, 5 * raised, 3, "#7a4d28");
-    drawRectFromGround(x + 36 * face, footY, 51 + raised * 17, 13, 5, "#aeb8be");
-    drawRectFromGround(x + 42 * face, footY, 47 + raised * 17, 6, 9, "#dbe7ea");
-    drawRectFromGround(x + 30 * face, footY, 50 + raised * 17, 5, 8, "#6f7b82");
+    drawPixelStepsFromGround(axeBaseX, bodyY, 24 + raised * 6, 8, 3 * face, 5 * raised, 3, "#7a4d28");
+    drawRectFromGround(x + 36 * face, bodyY, 51 + raised * 17, 13, 5, "#aeb8be");
+    drawRectFromGround(x + 42 * face, bodyY, 47 + raised * 17, 6, 9, "#dbe7ea");
+    drawRectFromGround(x + 30 * face, bodyY, 50 + raised * 17, 5, 8, "#6f7b82");
   } else {
-    drawPixelStepsFromGround(axeBaseX, footY, 18, 8, 2 * face, 5, 3, "#7a4d28");
-    drawRectFromGround(x + 28 * face, footY, 57, 12, 5, "#aeb8be");
-    drawRectFromGround(x + 34 * face, footY, 53, 5, 9, "#dbe7ea");
+    drawPixelStepsFromGround(axeBaseX, bodyY, 18, 8, 2 * face, 5, 3, "#7a4d28");
+    drawRectFromGround(x + 28 * face, bodyY, 57, 12, 5, "#aeb8be");
+    drawRectFromGround(x + 34 * face, bodyY, 53, 5, 9, "#dbe7ea");
   }
   if (explorer.action === "chop" && chop < -0.25) {
-    drawRectFromGround(x + 38 * face, footY, 22, 3, 3, "#f4d29b");
-    drawRectFromGround(x + 46 * face, footY, 29, 3, 3, "#ffdca8");
+    drawRectFromGround(x + 38 * face, bodyY, 22, 3, 3, "#f4d29b");
+    drawRectFromGround(x + 46 * face, bodyY, 29, 3, 3, "#ffdca8");
   }
 }
 

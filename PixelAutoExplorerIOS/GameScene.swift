@@ -836,9 +836,9 @@ final class GameScene: SKScene {
         explorer.node.xScale = explorer.facing * 1.45
         switch explorer.action {
         case .walk:
-            let bob = sin(explorer.walkClock * 10) * 2
-            explorer.node.yScale = 1.45 + bob * 0.012
-            explorer.node.zRotation = sin(explorer.walkClock * 10) * 0.025 * explorer.facing
+            let step = abs(sin(explorer.walkClock * 10))
+            explorer.node.yScale = 1.45 + step * 0.018
+            explorer.node.zRotation = sin(explorer.walkClock * 10) * 0.012 * explorer.facing
         case .chop:
             explorer.node.yScale = 1.45
             explorer.node.zRotation = sin(explorer.gatherTimer * 22) * 0.075 * explorer.facing

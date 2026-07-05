@@ -11,7 +11,7 @@
 - GitHub repo: `https://github.com/ailiferyoya-gif/PixelAutoExplorerIOS`
 - Published preview: `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/`
 - Cache-bypassed reference-density preview: `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/reference-density.html`
-- Latest live-verified web commit: `31ace77`
+- Latest live-verified art commit: `13b102d`
 
 ## Implemented
 
@@ -30,6 +30,7 @@
 - Finer code-drawn pixel art for trees, materials, the summon gate, and fantasy explorers.
 - Materials and trees are grounded against terrain instead of floating above it.
 - Reference-density pass added leafy tree clusters, smaller sky clouds, terrain speckles, and seamless terrain fills so the scene reads closer to dense 2D pixel action games.
+- Ultra-fine pass added 16px terrain cells with 2px highlights/shadows, tiny moss and stone flecks, visible background houses/graves/church silhouettes, denser leafy trees, and smaller explorer equipment details.
 
 ## Backup
 
@@ -40,6 +41,7 @@
 - A pre-fine-pixel-grounding backup was created before the latest art and grounding pass.
 - A pre-reference-density backup was created before the denser pixel-art pass.
 - A pre-preview-alias backup was created before adding the cache-bypassed Pages entry.
+- A pre-ultra-fine-pixels backup was created before the latest reference-image granularity pass.
 
 ## Verification
 
@@ -50,6 +52,7 @@
 - Local browser screenshot check confirmed the summoned explorer reads as a fantasy character with hat, robe, belt, and staff.
 - Local browser screenshot check confirmed the denser terrain and leafy trees match the provided reference granularity more closely.
 - GitHub Pages `reference-density.html` loaded the cache-bypassed art, summoned an explorer, collected materials, and reported no console errors.
+- GitHub Pages default preview loaded `app.js?v=ultra-fine-20260705`, summoned an explorer, collected materials, and reported no console errors.
 - GitHub Pages live URL was rechecked after the fine-pixel grounding pass.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.

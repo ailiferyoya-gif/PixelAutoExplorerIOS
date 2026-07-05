@@ -30,6 +30,10 @@ const world = {
   tile: 32
 };
 
+const terrain = {
+  cell: 16
+};
+
 const state = {
   camera: { x: 0, y: -80 },
   materials: [],
@@ -250,30 +254,112 @@ function hashUnit(a, b = 0, c = 0) {
   return value - Math.floor(value);
 }
 
+function drawPixelStepsFromGround(x, groundY, bottom, steps, stepX, stepY, size, color) {
+  for (let i = 0; i < steps; i += 1) {
+    drawRectFromGround(x + i * stepX, groundY, bottom + i * stepY, size, size, color);
+  }
+}
+
 function drawLeafBlock(x, groundY, bottom, w, h, color, seed) {
-  drawRectFromGround(x, groundY, bottom, w, h, color);
-  const speckCount = Math.max(2, Math.floor((w * h) / 140));
+  drawRectFromGround(x, groundY, bottom + 1, w, h, "#1f4a26");
+  const speckCount = Math.max(8, Math.floor((w * h) / 42));
   for (let i = 0; i < speckCount; i += 1) {
-    const sx = x - w / 2 + 4 + hashUnit(seed, i, 1) * (w - 8);
-    const sy = bottom + 3 + hashUnit(seed, i, 2) * Math.max(4, h - 6);
-    const bright = hashUnit(seed, i, 3) > 0.45 ? "#94d96b" : "#2a7a3d";
-    drawRectFromGround(sx, groundY, sy, 5, 5, bright);
+    const sx = x - w / 2 + 2 + hashUnit(seed, i, 1) * Math.max(4, w - 4);
+    const sy = bottom + 2 + hashUnit(seed, i, 2) * Math.max(4, h - 4);
+    const roll = hashUnit(seed, i, 3);
+    const leaf = roll > 0.78 ? "#b4ee79" : roll > 0.44 ? color : "#2a7135";
+    const size = roll > 0.86 ? 3 : 4;
+    drawRectFromGround(sx, groundY, sy, size, size, leaf);
+  }
+  for (let i = 0; i < 6; i += 1) {
+    const sx = x - w / 2 + hashUnit(seed, i, 9) * w;
+    const sy = bottom + hashUnit(seed, i, 10) * h;
+    drawRectFromGround(sx, groundY, sy, 3, 3, "#17351c");
   }
 }
 
 function drawCanopyTree(x, groundY, seed = 1, scale = 1) {
-  const trunkW = 11 * scale;
-  drawRectFromGround(x - 4 * scale, groundY, 0, trunkW, 43 * scale, "#63371d");
-  drawRectFromGround(x + 4 * scale, groundY, 4 * scale, 6 * scale, 36 * scale, "#8b542a");
-  drawRectFromGround(x - 8 * scale, groundY, 16 * scale, 7 * scale, 23 * scale, "#4c2a17");
-  drawRectFromGround(x + 10 * scale, groundY, 17 * scale, 12 * scale, 5 * scale, "#7a4724");
-  drawLeafBlock(x - 24 * scale, groundY, 38 * scale, 34 * scale, 18 * scale, "#4cae42", seed + 1);
-  drawLeafBlock(x + 1 * scale, groundY, 34 * scale, 46 * scale, 22 * scale, "#54b64a", seed + 2);
-  drawLeafBlock(x + 22 * scale, groundY, 42 * scale, 30 * scale, 18 * scale, "#3d963b", seed + 3);
-  drawLeafBlock(x - 11 * scale, groundY, 54 * scale, 38 * scale, 18 * scale, "#77c85d", seed + 4);
-  drawLeafBlock(x + 11 * scale, groundY, 59 * scale, 28 * scale, 15 * scale, "#66be54", seed + 5);
-  drawRectFromGround(x - 29 * scale, groundY, 47 * scale, 8 * scale, 8 * scale, "#b8ef86");
-  drawRectFromGround(x + 8 * scale, groundY, 66 * scale, 6 * scale, 6 * scale, "#cdf59a");
+  const s = scale;
+  drawRectFromGround(x - 5 * s, groundY, 0, 12 * s, 48 * s, "#3b2115");
+  drawRectFromGround(x - 2 * s, groundY, 2 * s, 7 * s, 47 * s, "#6b3a1f");
+  drawRectFromGround(x + 5 * s, groundY, 5 * s, 4 * s, 41 * s, "#9a5c2a");
+  drawPixelStepsFromGround(x - 12 * s, groundY, 24 * s, 6, -4 * s, 5 * s, 5 * s, "#432515");
+  drawPixelStepsFromGround(x + 8 * s, groundY, 27 * s, 5, 5 * s, 4 * s, 5 * s, "#5b321b");
+  drawPixelStepsFromGround(x - 1 * s, groundY, 45 * s, 5, 0, 5 * s, 5 * s, "#2b1a12");
+  drawLeafBlock(x - 26 * s, groundY, 43 * s, 35 * s, 20 * s, "#4faf46", seed + 1);
+  drawLeafBlock(x + 0 * s, groundY, 39 * s, 48 * s, 24 * s, "#5bbb4e", seed + 2);
+  drawLeafBlock(x + 24 * s, groundY, 46 * s, 32 * s, 20 * s, "#3f983c", seed + 3);
+  drawLeafBlock(x - 13 * s, groundY, 60 * s, 41 * s, 19 * s, "#78ca5c", seed + 4);
+  drawLeafBlock(x + 11 * s, groundY, 65 * s, 31 * s, 16 * s, "#67bf55", seed + 5);
+  drawRectFromGround(x - 31 * s, groundY, 53 * s, 4 * s, 4 * s, "#d0f7a1");
+  drawRectFromGround(x + 7 * s, groundY, 73 * s, 4 * s, 4 * s, "#d8ffae");
+  drawRectFromGround(x + 20 * s, groundY, 58 * s, 3 * s, 3 * s, "#f2ffd0");
+}
+
+function drawPixelHouse(cx, groundY, width, height, roof, wall, seed) {
+  drawRectFromGround(cx, groundY, 0, width, height, "#1b1a18");
+  drawRectFromGround(cx, groundY, 3, width - 6, height - 6, wall);
+  for (let i = 0; i < Math.floor(width / 8); i += 1) {
+    const bx = cx - width / 2 + 4 + i * 8;
+    drawRectFromGround(bx, groundY, height - 1 + (i % 2) * 2, 8, 5, "#5a2418");
+    drawRectFromGround(bx, groundY, height + 4 + (i % 3), 8, 4, roof);
+  }
+  for (let i = 0; i < 5; i += 1) {
+    const wx = cx - width / 2 + 11 + i * 12;
+    if (wx > cx + width / 2 - 9) continue;
+    drawRectFromGround(wx, groundY, 16 + (i % 2) * 13, 6, 9, "#15191c");
+    drawRectFromGround(wx, groundY, 19 + (i % 2) * 13, 3, 3, "#e8f0dc");
+  }
+  drawRectFromGround(cx - width / 2 + 7, groundY, 5, 5, 15, "#271b14");
+  if (hashUnit(seed, 8, 2) > 0.5) {
+    drawRectFromGround(cx + width / 2 - 10, groundY, height + 6, 7, 11, "#2b2521");
+  }
+}
+
+function drawChurch(cx, groundY) {
+  drawRectFromGround(cx, groundY, 0, 74, 36, "#eee7da");
+  drawRectFromGround(cx, groundY, 33, 80, 6, "#4e2018");
+  drawRectFromGround(cx - 4, groundY, 39, 70, 6, "#a94823");
+  drawRectFromGround(cx + 16, groundY, 35, 21, 44, "#f5f0e6");
+  drawRectFromGround(cx + 16, groundY, 75, 26, 7, "#57231a");
+  drawRectFromGround(cx + 16, groundY, 82, 18, 5, "#b95127");
+  drawRectFromGround(cx + 16, groundY, 52, 11, 15, "#d4af35");
+  drawRectFromGround(cx + 16, groundY, 91, 4, 25, "#e6e2d7");
+  drawRectFromGround(cx + 16, groundY, 101, 18, 3, "#e6e2d7");
+  drawRectFromGround(cx - 24, groundY, 13, 8, 12, "#171a1c");
+  drawRectFromGround(cx - 3, groundY, 13, 8, 12, "#171a1c");
+  drawRectFromGround(cx + 36, groundY, 13, 8, 12, "#171a1c");
+}
+
+function drawGraveCluster(cx, groundY, seed) {
+  for (let i = 0; i < 7; i += 1) {
+    const x = cx - 52 + i * 18 + hashUnit(seed, i, 1) * 7;
+    const h = 23 + hashUnit(seed, i, 2) * 19;
+    drawRectFromGround(x, groundY, 0, 9, h, "#252b2c");
+    drawRectFromGround(x + 2, groundY, 3, 5, h - 5, "#596161");
+    if (i % 2 === 0) drawRectFromGround(x, groundY, h + 1, 15, 4, "#69716c");
+  }
+}
+
+function drawBackgroundLandmarks() {
+  const items = [
+    { type: "house", x: -820, width: 56, height: 48, roof: "#b14622", wall: "#f1eadb" },
+    { type: "house", x: -680, width: 82, height: 74, roof: "#9f351d", wall: "#eee6d7" },
+    { type: "house", x: -360, width: 66, height: 46, roof: "#a23c20", wall: "#eee6d5" },
+    { type: "graves", x: -110 },
+    { type: "tree", x: 80 },
+    { type: "graves", x: 290 },
+    { type: "church", x: 610 },
+    { type: "house", x: 1160, width: 78, height: 32, roof: "#9a371e", wall: "#eadcca" }
+  ];
+  for (const item of items) {
+    if (Math.abs(item.x - state.camera.x) > window.innerWidth / 2 + 260) continue;
+    const groundY = surfaceY(item.x) + 2;
+    if (item.type === "house") drawPixelHouse(item.x, groundY, item.width, item.height, item.roof, item.wall, item.x);
+    if (item.type === "church") drawChurch(item.x, groundY);
+    if (item.type === "graves") drawGraveCluster(item.x, groundY, item.x);
+    if (item.type === "tree") drawCanopyTree(item.x, groundY, 34, 1.25);
+  }
 }
 
 function drawBackground() {
@@ -297,62 +383,99 @@ function drawBackground() {
     ctx.fillRect(p.x - 10, p.y - 11, 24 + (i % 2) * 8, 6);
     ctx.fillRect(p.x + 14, p.y - 3, 34 + (i % 4) * 7, 6);
   }
+
+  drawBackgroundLandmarks();
 }
 
 function tileColor(depth, column) {
-  if (depth < 38) return column % 2 === 0 ? "#3a9148" : "#2e7c40";
-  if (depth < 190) return column % 3 === 0 ? "#5f4a33" : "#6f5437";
-  return column % 4 === 0 ? "#34363c" : "#272a30";
+  if (depth < 32) return column % 2 === 0 ? "#2e8a42" : "#246f38";
+  if (depth < 190) return column % 3 === 0 ? "#5c4933" : "#6b5238";
+  return column % 4 === 0 ? "#31343a" : "#25282e";
 }
 
-function drawTerrainDetails(x, y, surface, column, row) {
+function terrainPalette(depth, column, row) {
+  const variant = hashUnit(column, row, 4);
+  if (depth < 32) {
+    return {
+      outer: "#101814",
+      inner: variant > 0.5 ? "#2f8840" : "#26723a",
+      light: "#74be58",
+      dark: "#173b24",
+      moss: "#8ddb62"
+    };
+  }
+  if (depth < 190) {
+    return {
+      outer: "#161311",
+      inner: variant > 0.55 ? "#765b3d" : "#604a34",
+      light: "#9a754d",
+      dark: "#35281c",
+      moss: "#4c8b35"
+    };
+  }
+  return {
+    outer: "#101116",
+    inner: variant > 0.55 ? "#343841" : "#282c34",
+    light: "#545b68",
+    dark: "#191b20",
+    moss: "#315a3b"
+  };
+}
+
+function drawFineTerrainCell(x, y, surface, column, row) {
   const depth = surface - y;
-  const baseX = x - world.tile / 2;
-  const baseY = y - world.tile / 2;
-  const cells = 4;
-  for (let ix = 0; ix < cells; ix += 1) {
-    for (let iy = 0; iy < cells; iy += 1) {
-      const r = hashUnit(column, row, ix * 7 + iy);
-      if (r < 0.28 && depth < 38) {
-        ctx.fillStyle = r < 0.12 ? "#68b657" : "#2f7940";
-      } else if (r < 0.42 && depth < 190) {
-        ctx.fillStyle = r < 0.20 ? "#8a6842" : "#493724";
-      } else if (r < 0.34) {
-        ctx.fillStyle = r < 0.17 ? "#4a4f58" : "#1e2025";
-      } else {
-        continue;
-      }
-      const p = worldToScreen(baseX + ix * 8 + 4, baseY + iy * 8 + 4);
-      ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+  const p = worldToScreen(x, y);
+  const palette = terrainPalette(depth, column, row);
+  const size = terrain.cell;
+  ctx.fillStyle = palette.outer;
+  ctx.fillRect(p.x - size / 2, p.y - size / 2, size, size);
+  ctx.fillStyle = palette.inner;
+  ctx.fillRect(p.x - size / 2 + 2, p.y - size / 2 + 2, size - 4, size - 4);
+  ctx.fillStyle = palette.light;
+  ctx.fillRect(p.x - size / 2 + 2, p.y - size / 2 + 2, size - 5, 2);
+  ctx.fillRect(p.x - size / 2 + 2, p.y - size / 2 + 4, 2, size - 7);
+  ctx.fillStyle = palette.dark;
+  ctx.fillRect(p.x - size / 2 + 3, p.y + size / 2 - 4, size - 5, 2);
+  ctx.fillRect(p.x + size / 2 - 4, p.y - size / 2 + 4, 2, size - 7);
+  for (let i = 0; i < 4; i += 1) {
+    const r = hashUnit(column, row, i * 13);
+    if (r < 0.64) {
+      const mx = p.x - 5 + Math.floor(hashUnit(column, row, i) * 10);
+      const my = p.y - 5 + Math.floor(hashUnit(column, row, i + 9) * 10);
+      ctx.fillStyle = r < 0.2 ? palette.light : r < 0.42 ? palette.dark : palette.moss;
+      ctx.fillRect(mx, my, 2, 2);
     }
   }
-  if (depth < 38) {
-    for (let i = 0; i < 4; i += 1) {
-      if (hashUnit(column, i, 77) > 0.72) {
-        const grassX = x - 13 + i * 8;
-        drawRectFromGround(grassX, surface, 0, 3, 9 + i % 2 * 5, "#93dd5f");
-      }
+  if (depth > 40 && depth < 170 && hashUnit(column, row, 99) > 0.78) {
+    for (let i = 0; i < 3; i += 1) {
+      ctx.fillStyle = i % 2 ? "#68b24c" : "#315e2d";
+      ctx.fillRect(p.x - 5 + i * 4, p.y - 2 + i * 3, 3, 3);
     }
   }
 }
 
 function drawTerrain() {
-  const start = Math.floor((state.camera.x - window.innerWidth / 2 - 80) / world.tile);
-  const end = Math.ceil((state.camera.x + window.innerWidth / 2 + 80) / world.tile);
+  const start = Math.floor((state.camera.x - window.innerWidth / 2 - 80) / terrain.cell);
+  const end = Math.ceil((state.camera.x + window.innerWidth / 2 + 80) / terrain.cell);
+  const yStart = Math.floor(world.minY / terrain.cell) * terrain.cell;
   for (let column = start; column <= end; column += 1) {
-    const x = column * world.tile;
-    if (x < world.minX - world.tile || x > world.maxX + world.tile) continue;
+    const x = column * terrain.cell;
+    if (x < world.minX - terrain.cell || x > world.maxX + terrain.cell) continue;
     const surface = surfaceY(x);
     let row = 0;
-    for (let y = world.minY; y <= surface; y += world.tile) {
-      drawRectWorld(x, y, world.tile + 1, world.tile + 1, tileColor(surface - y, column));
-      drawTerrainDetails(x, y, surface, column, row);
+    for (let y = yStart; y <= surface; y += terrain.cell) {
+      drawFineTerrainCell(x, y, surface, column, row);
       row += 1;
     }
-    if (column % 9 === 0) {
-      drawRectFromGround(x - 6, surface, 0, 3, 18, "#5cd65a");
-      drawRectFromGround(x, surface, 0, 3, 12, "#47bd4a");
-      drawRectFromGround(x + 6, surface, 0, 3, 16, "#63e060");
+    drawRectFromGround(x, surface, -2, terrain.cell + 2, 4, "#142414");
+    drawRectFromGround(x, surface, 0, terrain.cell + 2, 4, tileColor(0, column));
+    if (column % 5 === 0) {
+      drawRectFromGround(x - 6, surface, 0, 2, 15, "#8be05a");
+      drawRectFromGround(x, surface, 0, 2, 10, "#47bd4a");
+      drawRectFromGround(x + 5, surface, 0, 2, 13, "#b5f070");
+    }
+    if (column % 17 === 0) {
+      drawPixelStepsFromGround(x + 2, surface, 2, 5, 2, 4, 3, "#2f6b32");
     }
   }
 }
@@ -364,28 +487,33 @@ function drawMaterial(material) {
   if (material.kind === "wood") {
     drawCanopyTree(x, y, Math.round(x), 1.0);
   } else if (material.kind === "stone") {
-    drawRectFromGround(x - 6, y, 0, 28, 12, data.color);
-    drawRectFromGround(x + 8, y, 4, 22, 12, "#727b86");
-    drawRectFromGround(x - 8, y, 10, 16, 8, "#a3abb3");
-    drawRectFromGround(x + 4, y, 3, 6, 5, "#424956");
+    drawRectFromGround(x - 8, y, 0, 24, 9, "#4c535c");
+    drawRectFromGround(x + 8, y, 3, 22, 10, data.color);
+    drawRectFromGround(x - 10, y, 8, 12, 6, "#a8b0b8");
+    drawRectFromGround(x + 2, y, 10, 9, 5, "#bcc4c9");
+    drawRectFromGround(x + 13, y, 7, 4, 4, "#303842");
+    drawRectFromGround(x - 2, y, 3, 3, 3, "#d7dee0");
   } else if (material.kind === "ore") {
-    drawRectFromGround(x - 4, y, 0, 34, 15, "#464b55");
-    drawRectFromGround(x + 10, y, 5, 24, 13, "#5a6070");
-    drawRectFromGround(x - 11, y, 8, 10, 9, data.color);
-    drawRectFromGround(x + 3, y, 4, 7, 7, "#e69b4a");
-    drawRectFromGround(x + 15, y, 11, 6, 6, "#ffc06c");
+    drawRectFromGround(x - 4, y, 0, 34, 13, "#303640");
+    drawRectFromGround(x + 10, y, 5, 23, 12, "#555d6a");
+    drawRectFromGround(x - 13, y, 8, 8, 8, data.color);
+    drawRectFromGround(x - 3, y, 5, 5, 5, "#e79a48");
+    drawRectFromGround(x + 8, y, 10, 5, 5, "#ffc06c");
+    drawRectFromGround(x + 16, y, 14, 4, 4, "#ffe0a8");
+    drawRectFromGround(x - 18, y, 2, 3, 3, "#11151a");
   } else if (material.kind === "herb") {
-    drawRectFromGround(x, y, 0, 4, 25, data.color);
-    drawRectFromGround(x - 8, y, 6, 14, 6, "#85f073");
-    drawRectFromGround(x + 10, y, 13, 16, 6, "#33a857");
-    drawRectFromGround(x - 3, y, 22, 7, 7, "#b9ff8c");
-    drawRectFromGround(x + 4, y, 25, 5, 5, "#f0ffd0");
+    drawRectFromGround(x, y, 0, 3, 27, data.color);
+    drawPixelStepsFromGround(x - 3, y, 6, 4, -4, 3, 4, "#85f073");
+    drawPixelStepsFromGround(x + 3, y, 9, 4, 4, 4, 4, "#33a857");
+    drawRectFromGround(x - 6, y, 24, 5, 5, "#b9ff8c");
+    drawRectFromGround(x + 5, y, 28, 4, 4, "#f0ffd0");
   } else {
-    drawRectFromGround(x, y, 0, 14, 38, data.color);
-    drawRectFromGround(x - 10, y, 4, 10, 24, "#4d8ee0");
-    drawRectFromGround(x + 10, y, 7, 9, 28, "#51c8f1");
-    drawRectFromGround(x, y, 13, 5, 20, "#d1ffff");
-    drawRectFromGround(x - 2, y, 35, 8, 7, "#eaffff");
+    drawRectFromGround(x, y, 0, 12, 36, data.color);
+    drawPixelStepsFromGround(x - 8, y, 5, 4, -2, 6, 5, "#4d8ee0");
+    drawPixelStepsFromGround(x + 8, y, 7, 5, 2, 5, 5, "#51c8f1");
+    drawRectFromGround(x, y, 13, 4, 18, "#d1ffff");
+    drawRectFromGround(x - 2, y, 34, 7, 6, "#eaffff");
+    drawRectFromGround(x + 5, y, 25, 3, 4, "#ffffff");
   }
 }
 
@@ -405,24 +533,31 @@ function drawExplorer(explorer) {
   const x = explorer.x;
   const footY = explorer.y - 58 + Math.sin(explorer.clock * 10) * 2;
   const face = explorer.face;
-  drawRectFromGround(x - 11, footY, 0, 9, 8, "#1b1f27");
-  drawRectFromGround(x + 7, footY, 0, 9, 8, "#1b1f27");
-  drawRectFromGround(x - 9, footY, 8, 7, 17, "#313947");
-  drawRectFromGround(x + 8, footY, 8, 7, 17, "#313947");
-  drawRectFromGround(x, footY, 24, 30, 26, explorer.color);
-  drawRectFromGround(x, footY, 45, 23, 18, "#f5b87a");
-  drawRectFromGround(x, footY, 60, 29, 9, "#2c1a13");
-  drawRectFromGround(x - 12, footY, 27, 9, 25, "#273142");
-  drawRectFromGround(x + 14, footY, 28, 7, 22, "#f5b87a");
-  drawRectFromGround(x, footY, 33, 30, 4, "#f0ce5b");
-  drawRectFromGround(x - 2, footY, 36, 7, 6, "#6a3a1f");
-  drawRectFromGround(x + 16 * face, footY, 16, 4, 48, "#8d7044");
-  drawRectFromGround(x + 18 * face, footY, 56, 10, 10, "#62e7f0");
-  drawRectFromGround(x + 18 * face, footY, 67, 6, 9, "#eaffff");
-  drawRectFromGround(x - 5 * face, footY, 53, 3, 3, "#0d0d0d");
-  drawRectFromGround(x + 5 * face, footY, 53, 3, 3, "#0d0d0d");
-  drawRectFromGround(x + 7 * face, footY, 48, 7, 2, "#8a4a32");
-  drawRectFromGround(x - 13, footY, 22, 6, 12, "#7c4c2d");
+  drawRectFromGround(x - 10, footY, 0, 8, 6, "#11151b");
+  drawRectFromGround(x + 7, footY, 0, 8, 6, "#11151b");
+  drawRectFromGround(x - 9, footY, 6, 6, 17, "#252c36");
+  drawRectFromGround(x + 8, footY, 6, 6, 17, "#303846");
+  drawRectFromGround(x - 1, footY, 22, 28, 28, "#151922");
+  drawRectFromGround(x - 2, footY, 24, 20, 24, explorer.color);
+  drawRectFromGround(x - 9, footY, 25, 5, 21, "#6f3bc4");
+  drawRectFromGround(x + 8, footY, 27, 5, 18, "#b35ff0");
+  drawRectFromGround(x, footY, 32, 24, 3, "#f0ce5b");
+  drawRectFromGround(x - 2, footY, 35, 5, 5, "#6a3a1f");
+  drawRectFromGround(x - 1, footY, 47, 21, 17, "#f3b978");
+  drawRectFromGround(x - 11, footY, 43, 5, 12, "#2c1a13");
+  drawRectFromGround(x + 10, footY, 43, 5, 12, "#2c1a13");
+  drawRectFromGround(x - 1, footY, 59, 28, 7, "#1f120f");
+  drawRectFromGround(x - 1, footY, 66, 20, 5, "#2c1a13");
+  drawRectFromGround(x - 5 * face, footY, 54, 2, 2, "#090909");
+  drawRectFromGround(x + 5 * face, footY, 54, 2, 2, "#090909");
+  drawRectFromGround(x + 7 * face, footY, 49, 6, 2, "#8a4a32");
+  drawRectFromGround(x - 15, footY, 24, 5, 12, "#7c4c2d");
+  drawRectFromGround(x + 13, footY, 26, 5, 12, "#f3b978");
+  drawPixelStepsFromGround(x + 13 * face, footY, 16, 8, 2 * face, 6, 3, "#7a623e");
+  drawPixelStepsFromGround(x + 22 * face, footY, 54, 5, 3 * face, 5, 4, "#62e7f0");
+  drawPixelStepsFromGround(x + 28 * face, footY, 73, 3, 2 * face, 5, 3, "#eaffff");
+  drawRectFromGround(x - 14 * face, footY, 51, 4, 4, "#ffffff");
+  drawRectFromGround(x - 15 * face, footY, 57, 4, 6, "#4bd6ff");
 }
 
 function drawPopups() {

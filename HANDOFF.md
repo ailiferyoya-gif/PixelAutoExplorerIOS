@@ -10,7 +10,7 @@
 - Browser-checkable GitHub Pages preview lives in `PreviewWeb/`.
 - GitHub repo: `https://github.com/ailiferyoya-gif/PixelAutoExplorerIOS`
 - Published preview: `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/`
-- Last verified commit: `c5c989a`
+- Current art pass was verified locally before push; recheck the live URL after publishing because GitHub Pages can lag.
 
 ## Implemented
 
@@ -25,6 +25,8 @@
 - No external image assets and no sprite sheets are used.
 - Root `index.html` redirects to `PreviewWeb/` for GitHub Pages.
 - `.nojekyll` is present for static hosting.
+- Finer code-drawn pixel art for trees, materials, the summon gate, and fantasy explorers.
+- Materials and trees are grounded against terrain instead of floating above it.
 
 ## Backup
 
@@ -32,12 +34,15 @@
 - A creation note was placed under `D:\Codex\backups` before writing the new D-drive project.
 - A pre-preview backup was created before adding Web preview and Pages files.
 - A pre-publish-notes backup was created before this handoff update.
+- A pre-fine-pixel-grounding backup was created before the latest art and grounding pass.
 
 ## Verification
 
 - File-level structure was checked locally.
 - `PreviewWeb/app.js` passed `node --check`.
 - Local browser preview loaded, summoned an explorer, collected materials, and reported no console errors.
+- Local browser screenshot check confirmed trees, stones, ores, herbs, crystals, and the summon gate sit on the terrain.
+- Local browser screenshot check confirmed the summoned explorer reads as a fantasy character with hat, robe, belt, and staff.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.
 - Native iOS build was not run because this Windows environment has no `swift`, `xcodebuild`, or XcodeBuildMCP simulator tool available.

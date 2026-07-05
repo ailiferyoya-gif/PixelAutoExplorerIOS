@@ -264,11 +264,11 @@ final class GameScene: SKScene {
 
     private func materialYOffset(for kind: MaterialKind) -> CGFloat {
         switch kind {
-        case .wood: return 58
-        case .stone: return 34
-        case .ore: return 28
-        case .herb: return 30
-        case .crystal: return 36
+        case .wood: return 36
+        case .stone: return 14
+        case .ore: return 16
+        case .herb: return 18
+        case .crystal: return 24
         }
     }
 
@@ -276,38 +276,53 @@ final class GameScene: SKScene {
         let root = SKNode()
         switch kind {
         case .wood:
-            addPixel(to: root, color: kind.color, rect: CGRect(x: -8, y: -18, width: 16, height: 36))
-            addPixel(to: root, color: SKColor(red: 0.20, green: 0.58, blue: 0.23, alpha: 1), rect: CGRect(x: -24, y: 12, width: 48, height: 18))
-            addPixel(to: root, color: SKColor(red: 0.28, green: 0.70, blue: 0.28, alpha: 1), rect: CGRect(x: -16, y: 28, width: 32, height: 14))
+            addPixel(to: root, color: SKColor(red: 0.44, green: 0.26, blue: 0.12, alpha: 1), rect: CGRect(x: -10, y: -36, width: 12, height: 38))
+            addPixel(to: root, color: kind.color, rect: CGRect(x: 1, y: -29, width: 8, height: 29))
+            addPixel(to: root, color: SKColor(red: 0.12, green: 0.44, blue: 0.21, alpha: 1), rect: CGRect(x: -27, y: -2, width: 34, height: 14))
+            addPixel(to: root, color: SKColor(red: 0.18, green: 0.56, blue: 0.24, alpha: 1), rect: CGRect(x: -11, y: -5, width: 38, height: 18))
+            addPixel(to: root, color: SKColor(red: 0.30, green: 0.69, blue: 0.27, alpha: 1), rect: CGRect(x: -17, y: 12, width: 30, height: 14))
+            addPixel(to: root, color: SKColor(red: 0.40, green: 0.78, blue: 0.35, alpha: 1), rect: CGRect(x: -23, y: 9, width: 12, height: 10))
+            addPixel(to: root, color: SKColor(red: 0.12, green: 0.40, blue: 0.19, alpha: 1), rect: CGRect(x: 14, y: 7, width: 10, height: 10))
+            addPixel(to: root, color: SKColor(red: 0.65, green: 0.42, blue: 0.20, alpha: 1), rect: CGRect(x: 1, y: -30, width: 3, height: 20))
         case .stone:
-            addPixel(to: root, color: kind.color, rect: CGRect(x: -18, y: -12, width: 36, height: 22))
-            addPixel(to: root, color: SKColor(red: 0.34, green: 0.37, blue: 0.42, alpha: 1), rect: CGRect(x: -10, y: 5, width: 24, height: 12))
+            addPixel(to: root, color: kind.color, rect: CGRect(x: -20, y: -14, width: 28, height: 12))
+            addPixel(to: root, color: SKColor(red: 0.45, green: 0.48, blue: 0.53, alpha: 1), rect: CGRect(x: -3, y: -10, width: 22, height: 12))
+            addPixel(to: root, color: SKColor(red: 0.64, green: 0.67, blue: 0.70, alpha: 1), rect: CGRect(x: -16, y: -4, width: 16, height: 8))
+            addPixel(to: root, color: SKColor(red: 0.26, green: 0.29, blue: 0.34, alpha: 1), rect: CGRect(x: 1, y: -11, width: 6, height: 5))
         case .ore:
-            addPixel(to: root, color: SKColor(red: 0.32, green: 0.34, blue: 0.38, alpha: 1), rect: CGRect(x: -18, y: -13, width: 38, height: 26))
-            addPixel(to: root, color: kind.color, rect: CGRect(x: -8, y: -3, width: 12, height: 10))
-            addPixel(to: root, color: SKColor(red: 0.98, green: 0.70, blue: 0.36, alpha: 1), rect: CGRect(x: 8, y: 4, width: 8, height: 8))
+            addPixel(to: root, color: SKColor(red: 0.27, green: 0.29, blue: 0.33, alpha: 1), rect: CGRect(x: -21, y: -16, width: 34, height: 15))
+            addPixel(to: root, color: SKColor(red: 0.35, green: 0.38, blue: 0.44, alpha: 1), rect: CGRect(x: -2, y: -11, width: 24, height: 13))
+            addPixel(to: root, color: kind.color, rect: CGRect(x: -16, y: -8, width: 10, height: 9))
+            addPixel(to: root, color: SKColor(red: 0.90, green: 0.61, blue: 0.29, alpha: 1), rect: CGRect(x: 0, y: -12, width: 7, height: 7))
+            addPixel(to: root, color: SKColor(red: 1.0, green: 0.75, blue: 0.42, alpha: 1), rect: CGRect(x: 12, y: -5, width: 6, height: 6))
         case .herb:
-            addPixel(to: root, color: kind.color, rect: CGRect(x: -4, y: -12, width: 8, height: 24))
-            addPixel(to: root, color: SKColor(red: 0.52, green: 0.94, blue: 0.45, alpha: 1), rect: CGRect(x: -18, y: 2, width: 16, height: 8))
-            addPixel(to: root, color: SKColor(red: 0.20, green: 0.66, blue: 0.34, alpha: 1), rect: CGRect(x: 2, y: 10, width: 18, height: 8))
+            addPixel(to: root, color: kind.color, rect: CGRect(x: -2, y: -18, width: 4, height: 25))
+            addPixel(to: root, color: SKColor(red: 0.52, green: 0.94, blue: 0.45, alpha: 1), rect: CGRect(x: -15, y: -12, width: 14, height: 6))
+            addPixel(to: root, color: SKColor(red: 0.20, green: 0.66, blue: 0.34, alpha: 1), rect: CGRect(x: 2, y: -5, width: 16, height: 6))
+            addPixel(to: root, color: SKColor(red: 0.73, green: 1.0, blue: 0.55, alpha: 1), rect: CGRect(x: -6, y: 4, width: 7, height: 7))
+            addPixel(to: root, color: SKColor(red: 0.94, green: 1.0, blue: 0.82, alpha: 1), rect: CGRect(x: 4, y: 7, width: 5, height: 5))
         case .crystal:
-            addPixel(to: root, color: kind.color, rect: CGRect(x: -8, y: -14, width: 16, height: 34))
-            addPixel(to: root, color: SKColor(red: 0.82, green: 1.0, blue: 1.0, alpha: 1), rect: CGRect(x: -3, y: 0, width: 6, height: 18))
-            addPixel(to: root, color: SKColor(red: 0.30, green: 0.56, blue: 0.88, alpha: 1), rect: CGRect(x: 9, y: -8, width: 10, height: 22))
+            addPixel(to: root, color: kind.color, rect: CGRect(x: -7, y: -24, width: 14, height: 38))
+            addPixel(to: root, color: SKColor(red: 0.30, green: 0.56, blue: 0.88, alpha: 1), rect: CGRect(x: -15, y: -20, width: 10, height: 24))
+            addPixel(to: root, color: SKColor(red: 0.32, green: 0.78, blue: 0.94, alpha: 1), rect: CGRect(x: 6, y: -17, width: 9, height: 28))
+            addPixel(to: root, color: SKColor(red: 0.82, green: 1.0, blue: 1.0, alpha: 1), rect: CGRect(x: -3, y: -11, width: 5, height: 20))
+            addPixel(to: root, color: SKColor(red: 0.92, green: 1.0, blue: 1.0, alpha: 1), rect: CGRect(x: -4, y: 11, width: 8, height: 7))
         }
         return root
     }
 
     private func buildSummonGate() {
-        let baseY = surfaceY(at: 0) + 28
+        let baseY = surfaceY(at: 0)
         let gate = SKNode()
         gate.name = "summonGate"
         gate.position = CGPoint(x: 0, y: baseY)
         gate.zPosition = 4
-        addPixel(to: gate, color: SKColor(red: 0.22, green: 0.20, blue: 0.35, alpha: 1), rect: CGRect(x: -40, y: -12, width: 80, height: 18))
-        addPixel(to: gate, color: SKColor(red: 0.94, green: 0.74, blue: 0.28, alpha: 1), rect: CGRect(x: -28, y: 6, width: 14, height: 52))
-        addPixel(to: gate, color: SKColor(red: 0.94, green: 0.74, blue: 0.28, alpha: 1), rect: CGRect(x: 14, y: 6, width: 14, height: 52))
-        addPixel(to: gate, color: SKColor(red: 0.36, green: 0.92, blue: 0.96, alpha: 0.78), rect: CGRect(x: -16, y: 8, width: 32, height: 44))
+        addPixel(to: gate, color: SKColor(red: 0.22, green: 0.20, blue: 0.35, alpha: 1), rect: CGRect(x: -42, y: 0, width: 84, height: 14))
+        addPixel(to: gate, color: SKColor(red: 0.94, green: 0.74, blue: 0.28, alpha: 1), rect: CGRect(x: -30, y: 10, width: 14, height: 54))
+        addPixel(to: gate, color: SKColor(red: 0.94, green: 0.74, blue: 0.28, alpha: 1), rect: CGRect(x: 16, y: 10, width: 14, height: 54))
+        addPixel(to: gate, color: SKColor(red: 0.36, green: 0.92, blue: 0.96, alpha: 0.78), rect: CGRect(x: -17, y: 13, width: 34, height: 44))
+        addPixel(to: gate, color: SKColor(red: 1.0, green: 0.94, blue: 0.64, alpha: 1), rect: CGRect(x: -31, y: 58, width: 17, height: 7))
+        addPixel(to: gate, color: SKColor(red: 1.0, green: 0.94, blue: 0.64, alpha: 1), rect: CGRect(x: 14, y: 58, width: 17, height: 7))
         gate.run(.repeatForever(.sequence([
             .scale(to: 1.06, duration: 0.55),
             .scale(to: 1.0, duration: 0.55)
@@ -424,20 +439,32 @@ final class GameScene: SKScene {
 
     private func makeExplorerNode(index: Int) -> SKNode {
         let root = SKNode()
-        let shirtColors = [
-            SKColor(red: 0.18, green: 0.54, blue: 0.84, alpha: 1),
-            SKColor(red: 0.78, green: 0.34, blue: 0.42, alpha: 1),
-            SKColor(red: 0.42, green: 0.62, blue: 0.28, alpha: 1),
-            SKColor(red: 0.68, green: 0.48, blue: 0.86, alpha: 1)
+        let robeColors = [
+            SKColor(red: 0.16, green: 0.46, blue: 0.80, alpha: 1),
+            SKColor(red: 0.72, green: 0.25, blue: 0.36, alpha: 1),
+            SKColor(red: 0.30, green: 0.55, blue: 0.26, alpha: 1),
+            SKColor(red: 0.55, green: 0.36, blue: 0.78, alpha: 1)
         ]
-        let shirt = shirtColors[(index - 1) % shirtColors.count]
-        addPixel(to: root, color: SKColor(red: 0.15, green: 0.10, blue: 0.08, alpha: 1), rect: CGRect(x: -12, y: 21, width: 24, height: 8))
-        addPixel(to: root, color: SKColor(red: 0.96, green: 0.72, blue: 0.48, alpha: 1), rect: CGRect(x: -10, y: 8, width: 20, height: 18))
-        addPixel(to: root, color: shirt, rect: CGRect(x: -13, y: -16, width: 26, height: 24))
-        addPixel(to: root, color: SKColor(red: 0.18, green: 0.18, blue: 0.23, alpha: 1), rect: CGRect(x: -10, y: -34, width: 8, height: 18))
-        addPixel(to: root, color: SKColor(red: 0.18, green: 0.18, blue: 0.23, alpha: 1), rect: CGRect(x: 2, y: -34, width: 8, height: 18))
-        addPixel(to: root, color: SKColor(white: 0.05, alpha: 1), rect: CGRect(x: -5, y: 15, width: 3, height: 3))
-        addPixel(to: root, color: SKColor(white: 0.05, alpha: 1), rect: CGRect(x: 5, y: 15, width: 3, height: 3))
+        let robe = robeColors[(index - 1) % robeColors.count]
+        addPixel(to: root, color: SKColor(red: 0.10, green: 0.12, blue: 0.15, alpha: 1), rect: CGRect(x: -15, y: -40, width: 11, height: 8))
+        addPixel(to: root, color: SKColor(red: 0.10, green: 0.12, blue: 0.15, alpha: 1), rect: CGRect(x: 4, y: -40, width: 11, height: 8))
+        addPixel(to: root, color: SKColor(red: 0.19, green: 0.22, blue: 0.28, alpha: 1), rect: CGRect(x: -12, y: -32, width: 8, height: 17))
+        addPixel(to: root, color: SKColor(red: 0.19, green: 0.22, blue: 0.28, alpha: 1), rect: CGRect(x: 5, y: -32, width: 8, height: 17))
+        addPixel(to: root, color: robe, rect: CGRect(x: -15, y: -16, width: 30, height: 26))
+        addPixel(to: root, color: SKColor(red: 0.15, green: 0.19, blue: 0.26, alpha: 1), rect: CGRect(x: -18, y: -13, width: 9, height: 25))
+        addPixel(to: root, color: SKColor(red: 0.96, green: 0.72, blue: 0.48, alpha: 1), rect: CGRect(x: 11, y: -12, width: 7, height: 22))
+        addPixel(to: root, color: SKColor(red: 0.94, green: 0.80, blue: 0.36, alpha: 1), rect: CGRect(x: -15, y: -7, width: 30, height: 4))
+        addPixel(to: root, color: SKColor(red: 0.42, green: 0.23, blue: 0.12, alpha: 1), rect: CGRect(x: -5, y: -4, width: 7, height: 6))
+        addPixel(to: root, color: SKColor(red: 0.96, green: 0.72, blue: 0.48, alpha: 1), rect: CGRect(x: -11, y: 10, width: 22, height: 18))
+        addPixel(to: root, color: SKColor(red: 0.17, green: 0.10, blue: 0.07, alpha: 1), rect: CGRect(x: -15, y: 25, width: 30, height: 9))
+        addPixel(to: root, color: SKColor(red: 0.17, green: 0.10, blue: 0.07, alpha: 1), rect: CGRect(x: -9, y: 32, width: 18, height: 6))
+        addPixel(to: root, color: SKColor(white: 0.05, alpha: 1), rect: CGRect(x: -6, y: 18, width: 3, height: 3))
+        addPixel(to: root, color: SKColor(white: 0.05, alpha: 1), rect: CGRect(x: 6, y: 18, width: 3, height: 3))
+        addPixel(to: root, color: SKColor(red: 0.54, green: 0.29, blue: 0.20, alpha: 1), rect: CGRect(x: 4, y: 12, width: 7, height: 2))
+        addPixel(to: root, color: SKColor(red: 0.55, green: 0.44, blue: 0.27, alpha: 1), rect: CGRect(x: 16, y: -24, width: 4, height: 48))
+        addPixel(to: root, color: SKColor(red: 0.38, green: 0.91, blue: 0.94, alpha: 1), rect: CGRect(x: 15, y: 20, width: 10, height: 10))
+        addPixel(to: root, color: SKColor(red: 0.92, green: 1.0, blue: 1.0, alpha: 1), rect: CGRect(x: 17, y: 31, width: 6, height: 9))
+        addPixel(to: root, color: SKColor(red: 0.49, green: 0.30, blue: 0.18, alpha: 1), rect: CGRect(x: -16, y: -18, width: 6, height: 12))
         root.setScale(1.45)
         return root
     }
@@ -454,7 +481,7 @@ final class GameScene: SKScene {
             if let target = explorer.target {
                 move(explorer, toward: target.node.position, dt: dt)
                 let distance = explorer.node.position.distance(to: target.node.position)
-                if distance < 34 {
+                if distance < 64 {
                     explorer.gatherTimer += dt
                     explorer.status = "GATHER \(target.kind.title)"
                     if explorer.gatherTimer >= 0.72 {

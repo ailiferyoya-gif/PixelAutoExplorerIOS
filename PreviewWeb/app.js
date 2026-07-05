@@ -70,7 +70,7 @@ function resize() {
 }
 
 function materialY(kind, x) {
-  const offset = { wood: 58, stone: 34, ore: 28, herb: 30, crystal: 36 }[kind];
+  const offset = { wood: 36, stone: 14, ore: 16, herb: 18, crystal: 24 }[kind];
   return surfaceY(x) + offset;
 }
 
@@ -174,7 +174,7 @@ function updateExplorers(dt) {
     if (explorer.target) {
       const target = explorer.target;
       moveToward(explorer, target.x, target.y, dt);
-      const near = distance(explorer.x, explorer.y, target.x, target.y) < 34;
+      const near = distance(explorer.x, explorer.y, target.x, target.y) < 64;
       if (near) {
         explorer.gather += dt;
         explorer.status = `GATHER ${kinds[target.kind].title}`;
@@ -241,6 +241,10 @@ function drawRectWorld(x, y, w, h, color) {
   ctx.fillRect(Math.round(p.x - w / 2), Math.round(p.y - h / 2), w, h);
 }
 
+function drawRectFromGround(x, groundY, bottom, w, h, color) {
+  drawRectWorld(x, groundY + bottom + h / 2, w, h, color);
+}
+
 function drawBackground() {
   const gradient = ctx.createLinearGradient(0, 0, 0, window.innerHeight);
   gradient.addColorStop(0, "#55b6d6");
@@ -279,9 +283,9 @@ function drawTerrain() {
       drawRectWorld(x, y, world.tile - 1, world.tile - 1, tileColor(surface - y, column));
     }
     if (column % 9 === 0) {
-      drawRectWorld(x - 6, surface + 25, 4, 18, "#5cd65a");
-      drawRectWorld(x, surface + 22, 4, 12, "#47bd4a");
-      drawRectWorld(x + 6, surface + 27, 4, 16, "#63e060");
+      drawRectFromGround(x - 6, surface, 0, 3, 18, "#5cd65a");
+      drawRectFromGround(x, surface, 0, 3, 12, "#47bd4a");
+      drawRectFromGround(x + 6, surface, 0, 3, 16, "#63e060");
     }
   }
 }
@@ -289,49 +293,76 @@ function drawTerrain() {
 function drawMaterial(material) {
   const data = kinds[material.kind];
   const x = material.x;
-  const y = material.y;
+  const y = surfaceY(x);
   if (material.kind === "wood") {
-    drawRectWorld(x, y, 16, 36, data.color);
-    drawRectWorld(x, y + 27, 48, 18, "#33943b");
-    drawRectWorld(x, y + 43, 32, 14, "#47b347");
+    drawRectFromGround(x - 4, y, 0, 12, 38, "#71421f");
+    drawRectFromGround(x + 5, y, 7, 8, 29, data.color);
+    drawRectFromGround(x - 10, y, 34, 34, 14, "#236f35");
+    drawRectFromGround(x + 8, y, 31, 38, 18, "#2f8f3c");
+    drawRectFromGround(x - 2, y, 48, 30, 14, "#4caf45");
+    drawRectFromGround(x - 17, y, 45, 12, 10, "#67c85a");
+    drawRectFromGround(x + 19, y, 43, 10, 10, "#1f6531");
+    drawRectFromGround(x + 2, y, 6, 3, 20, "#a66b32");
   } else if (material.kind === "stone") {
-    drawRectWorld(x, y, 36, 22, data.color);
-    drawRectWorld(x + 2, y + 9, 24, 12, "#565e6b");
+    drawRectFromGround(x - 6, y, 0, 28, 12, data.color);
+    drawRectFromGround(x + 8, y, 4, 22, 12, "#727b86");
+    drawRectFromGround(x - 8, y, 10, 16, 8, "#a3abb3");
+    drawRectFromGround(x + 4, y, 3, 6, 5, "#424956");
   } else if (material.kind === "ore") {
-    drawRectWorld(x, y, 38, 26, "#525660");
-    drawRectWorld(x - 2, y + 2, 12, 10, data.color);
-    drawRectWorld(x + 12, y + 8, 8, 8, "#fab35c");
+    drawRectFromGround(x - 4, y, 0, 34, 15, "#464b55");
+    drawRectFromGround(x + 10, y, 5, 24, 13, "#5a6070");
+    drawRectFromGround(x - 11, y, 8, 10, 9, data.color);
+    drawRectFromGround(x + 3, y, 4, 7, 7, "#e69b4a");
+    drawRectFromGround(x + 15, y, 11, 6, 6, "#ffc06c");
   } else if (material.kind === "herb") {
-    drawRectWorld(x, y, 8, 24, data.color);
-    drawRectWorld(x - 10, y + 7, 16, 8, "#85f073");
-    drawRectWorld(x + 11, y + 15, 18, 8, "#33a857");
+    drawRectFromGround(x, y, 0, 4, 25, data.color);
+    drawRectFromGround(x - 8, y, 6, 14, 6, "#85f073");
+    drawRectFromGround(x + 10, y, 13, 16, 6, "#33a857");
+    drawRectFromGround(x - 3, y, 22, 7, 7, "#b9ff8c");
+    drawRectFromGround(x + 4, y, 25, 5, 5, "#f0ffd0");
   } else {
-    drawRectWorld(x, y, 16, 34, data.color);
-    drawRectWorld(x, y + 6, 6, 18, "#d1ffff");
-    drawRectWorld(x + 14, y - 1, 10, 22, "#4d8ee0");
+    drawRectFromGround(x, y, 0, 14, 38, data.color);
+    drawRectFromGround(x - 10, y, 4, 10, 24, "#4d8ee0");
+    drawRectFromGround(x + 10, y, 7, 9, 28, "#51c8f1");
+    drawRectFromGround(x, y, 13, 5, 20, "#d1ffff");
+    drawRectFromGround(x - 2, y, 35, 8, 7, "#eaffff");
   }
 }
 
 function drawGate() {
   const x = 0;
-  const y = surfaceY(0) + 28;
+  const y = surfaceY(0);
   const pulse = 1 + Math.sin(performance.now() / 180) * 0.04;
-  drawRectWorld(x, y - 3, 80 * pulse, 18, "#38335a");
-  drawRectWorld(x - 21, y + 32, 14, 52, "#efbd47");
-  drawRectWorld(x + 21, y + 32, 14, 52, "#efbd47");
-  drawRectWorld(x, y + 30, 32 * pulse, 44, "rgba(92,235,245,0.78)");
+  drawRectFromGround(x, y, 0, 84 * pulse, 14, "#38335a");
+  drawRectFromGround(x - 23, y, 10, 14, 54, "#efbd47");
+  drawRectFromGround(x + 23, y, 10, 14, 54, "#efbd47");
+  drawRectFromGround(x, y, 13, 34 * pulse, 44, "rgba(92,235,245,0.78)");
+  drawRectFromGround(x - 23, y, 58, 17, 7, "#fff0a2");
+  drawRectFromGround(x + 23, y, 58, 17, 7, "#fff0a2");
 }
 
 function drawExplorer(explorer) {
   const x = explorer.x;
-  const y = explorer.y + Math.sin(explorer.clock * 10) * 2;
-  drawRectWorld(x, y + 25, 24, 8, "#261a14");
-  drawRectWorld(x, y + 14, 20, 18, "#f5b87a");
-  drawRectWorld(x, y - 5, 26, 24, explorer.color);
-  drawRectWorld(x - 6, y - 26, 8, 18, "#2e2e3a");
-  drawRectWorld(x + 6, y - 26, 8, 18, "#2e2e3a");
-  drawRectWorld(x - 5 * explorer.face, y + 17, 3, 3, "#0d0d0d");
-  drawRectWorld(x + 5 * explorer.face, y + 17, 3, 3, "#0d0d0d");
+  const footY = explorer.y - 58 + Math.sin(explorer.clock * 10) * 2;
+  const face = explorer.face;
+  drawRectFromGround(x - 11, footY, 0, 9, 8, "#1b1f27");
+  drawRectFromGround(x + 7, footY, 0, 9, 8, "#1b1f27");
+  drawRectFromGround(x - 9, footY, 8, 7, 17, "#313947");
+  drawRectFromGround(x + 8, footY, 8, 7, 17, "#313947");
+  drawRectFromGround(x, footY, 24, 30, 26, explorer.color);
+  drawRectFromGround(x, footY, 45, 23, 18, "#f5b87a");
+  drawRectFromGround(x, footY, 60, 29, 9, "#2c1a13");
+  drawRectFromGround(x - 12, footY, 27, 9, 25, "#273142");
+  drawRectFromGround(x + 14, footY, 28, 7, 22, "#f5b87a");
+  drawRectFromGround(x, footY, 33, 30, 4, "#f0ce5b");
+  drawRectFromGround(x - 2, footY, 36, 7, 6, "#6a3a1f");
+  drawRectFromGround(x + 16 * face, footY, 16, 4, 48, "#8d7044");
+  drawRectFromGround(x + 18 * face, footY, 56, 10, 10, "#62e7f0");
+  drawRectFromGround(x + 18 * face, footY, 67, 6, 9, "#eaffff");
+  drawRectFromGround(x - 5 * face, footY, 53, 3, 3, "#0d0d0d");
+  drawRectFromGround(x + 5 * face, footY, 53, 3, 3, "#0d0d0d");
+  drawRectFromGround(x + 7 * face, footY, 48, 7, 2, "#8a4a32");
+  drawRectFromGround(x - 13, footY, 22, 6, 12, "#7c4c2d");
 }
 
 function drawPopups() {

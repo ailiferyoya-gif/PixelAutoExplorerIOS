@@ -10,7 +10,7 @@
 - Browser-checkable GitHub Pages preview lives in `PreviewWeb/`.
 - GitHub repo: `https://github.com/ailiferyoya-gif/PixelAutoExplorerIOS`
 - Published preview: `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/`
-- Current art pass was verified locally before push; recheck the live URL after publishing because GitHub Pages can lag.
+- Latest live-verified art commit: `f536183`
 
 ## Implemented
 
@@ -43,6 +43,7 @@
 - Local browser preview loaded, summoned an explorer, collected materials, and reported no console errors.
 - Local browser screenshot check confirmed trees, stones, ores, herbs, crystals, and the summon gate sit on the terrain.
 - Local browser screenshot check confirmed the summoned explorer reads as a fantasy character with hat, robe, belt, and staff.
+- GitHub Pages live URL was rechecked after the fine-pixel grounding pass.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.
 - Native iOS build was not run because this Windows environment has no `swift`, `xcodebuild`, or XcodeBuildMCP simulator tool available.

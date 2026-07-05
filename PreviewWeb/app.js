@@ -9,16 +9,17 @@ const ui = {
   pause: document.getElementById("pause"),
   reset: document.getElementById("reset"),
   summon: document.getElementById("summon"),
+  roleButtons: [...document.querySelectorAll("[data-role]")],
   miniExplorer: document.getElementById("miniExplorer"),
   miniTarget: document.getElementById("miniTarget")
 };
 
 const kinds = {
-  wood: { title: "WOOD", color: "#935c2e", min: 3, max: 7, weight: 3 },
-  stone: { title: "STONE", color: "#8a949e", min: 2, max: 6, weight: 3 },
-  ore: { title: "ORE", color: "#bf7a40", min: 2, max: 5, weight: 2 },
-  herb: { title: "HERB", color: "#47c763", min: 1, max: 4, weight: 2 },
-  crystal: { title: "CRYSTAL", color: "#66ebf2", min: 1, max: 3, weight: 1 }
+  wood: { title: "木材", color: "#935c2e", min: 3, max: 7, weight: 3 },
+  stone: { title: "石材", color: "#8a949e", min: 2, max: 6, weight: 3 },
+  ore: { title: "鉱石", color: "#bf7a40", min: 2, max: 5, weight: 2 },
+  herb: { title: "薬草", color: "#47c763", min: 1, max: 4, weight: 2 },
+  crystal: { title: "水晶", color: "#66ebf2", min: 1, max: 3, weight: 1 }
 };
 
 const woodcutterPalettes = [
@@ -61,6 +62,66 @@ const woodcutterPalettes = [
 const weightedKinds = Object.entries(kinds).flatMap(([key, data]) => Array(data.weight).fill(key));
 const materialCount = 210;
 
+const roleDefinitions = {
+  woodcutter: {
+    title: "木こり",
+    targetKinds: ["wood"],
+    costWood: 12,
+    speed: 124,
+    gatherTime: 1.35,
+    discoveryRadius: 8,
+    workAction: "chop",
+    tool: "axe",
+    sfx: "chop",
+    paletteIndex: 0,
+    status: {
+      search: "木を探す",
+      travel: "木へ移動",
+      work: "伐採中",
+      scout: "木を探す",
+      none: "木がない"
+    }
+  },
+  digger: {
+    title: "掘り師",
+    targetKinds: ["stone", "ore"],
+    costWood: 10,
+    speed: 116,
+    gatherTime: 1.55,
+    discoveryRadius: 7,
+    workAction: "dig",
+    tool: "shovel",
+    sfx: "dig",
+    paletteIndex: 1,
+    status: {
+      search: "地面を調査",
+      travel: "採掘場所へ",
+      work: "土を掘る",
+      scout: "鉱脈探し",
+      none: "掘る場所なし"
+    }
+  },
+  adventurer: {
+    title: "冒険者",
+    targetKinds: ["herb", "crystal"],
+    costWood: 14,
+    speed: 138,
+    gatherTime: 1.1,
+    discoveryRadius: 14,
+    workAction: "adventure",
+    tool: "sword",
+    sfx: "collect",
+    paletteIndex: 0,
+    status: {
+      search: "冒険準備",
+      travel: "冒険へ",
+      work: "発見中",
+      scout: "冒険中",
+      none: "発見なし"
+    }
+  }
+};
+
 const world = {
   minX: -5600,
   maxX: 5600,
@@ -85,6 +146,7 @@ const state = {
   inventory: Object.fromEntries(Object.keys(kinds).map((kind) => [kind, 0])),
   discovered: new Set(),
   summons: 0,
+  selectedRole: "woodcutter",
   paused: false,
   lastTime: performance.now()
 };
@@ -211,6 +273,10 @@ function playSfx(kind) {
     playNoise(0.075, 0.10);
     playTone(176, 0.055, "square", 0.07);
     playTone(92, 0.08, "triangle", 0.045, 0.025);
+  } else if (kind === "dig") {
+    playNoise(0.09, 0.075);
+    playTone(118, 0.07, "triangle", 0.045);
+    playTone(70, 0.10, "square", 0.026, 0.025);
   } else if (kind === "collect") {
     playTone(523, 0.08, "triangle", 0.07);
     playTone(659, 0.10, "triangle", 0.06, 0.045);
@@ -219,24 +285,32 @@ function playSfx(kind) {
   }
 }
 
-function canSummon() {
-  return state.summons === 0 || state.inventory.wood >= 12;
+function currentRole() {
+  return roleDefinitions[state.selectedRole] || roleDefinitions.woodcutter;
+}
+
+function canSummon(roleId = state.selectedRole) {
+  const role = roleDefinitions[roleId] || roleDefinitions.woodcutter;
+  return state.summons === 0 || state.inventory.wood >= role.costWood;
 }
 
 function summonExplorer() {
   ensureAudio();
-  if (!canSummon()) {
+  const roleId = state.selectedRole;
+  const role = roleDefinitions[roleId] || roleDefinitions.woodcutter;
+  if (!canSummon(roleId)) {
     playSfx("denied");
-    addPopup("NEED 12 WOOD", state.camera.x, state.camera.y + 90, "#ffffff");
+    addPopup(`木材 ${role.costWood} 必要`, state.camera.x, state.camera.y + 90, "#ffffff");
     return;
   }
   if (state.summons > 0) {
-    state.inventory.wood -= 12;
+    state.inventory.wood -= role.costWood;
   }
   state.summons += 1;
   const x = rand(-20, 20);
   const explorer = {
     id: crypto.randomUUID ? crypto.randomUUID() : `explorer-${state.summons}`,
+    roleId,
     x,
     y: surfaceY(x) + 58,
     target: null,
@@ -247,12 +321,12 @@ function summonExplorer() {
     chopTimer: 0,
     face: 1,
     action: "idle",
-    status: "TREE SEARCH",
-    palette: woodcutterPalettes[(state.summons - 1) % woodcutterPalettes.length]
+    status: role.status.search,
+    palette: woodcutterPalettes[role.paletteIndex % woodcutterPalettes.length]
   };
   state.explorers.push(explorer);
   playSfx("summon");
-  addPopup(`WOODCUTTER #${state.summons}`, explorer.x, explorer.y + 64, "#ffd84b");
+  addPopup(`${role.title} #${state.summons}`, explorer.x, explorer.y + 64, "#ffd84b");
 }
 
 function distance(ax, ay, bx, by) {
@@ -260,18 +334,20 @@ function distance(ax, ay, bx, by) {
 }
 
 function scoreMaterial(material, explorer) {
-  if (material.kind !== "wood") return Infinity;
+  const role = roleDefinitions[explorer.roleId] || roleDefinitions.woodcutter;
+  if (!role.targetKinds.includes(material.kind)) return Infinity;
   const column = Math.round(material.x / world.tile);
-  const discoveryBonus = state.discovered.has(column) ? 130 : -220;
+  const discoveryBonus = state.discovered.has(column) ? 110 : -220;
   return distance(explorer.x, explorer.y, material.x, material.y) + discoveryBonus;
 }
 
 function assignTarget(explorer) {
+  const role = roleDefinitions[explorer.roleId] || roleDefinitions.woodcutter;
   let best = null;
   let bestScore = Infinity;
   for (const material of state.materials) {
     if (material.amount <= 0 || material.reservedBy) continue;
-    if (material.kind !== "wood") continue;
+    if (!role.targetKinds.includes(material.kind)) continue;
     const score = scoreMaterial(material, explorer);
     if (score < bestScore) {
       best = material;
@@ -282,7 +358,7 @@ function assignTarget(explorer) {
     best.reservedBy = explorer.id;
     explorer.target = best;
   } else {
-    explorer.status = "NO TREES";
+    explorer.status = role.status.none;
     explorer.action = "idle";
   }
 }
@@ -292,7 +368,8 @@ function moveToward(explorer, x, y, dt) {
   const dy = y - explorer.y;
   const length = Math.hypot(dx, dy);
   if (length < 4) return false;
-  const speed = 124 + Math.max(0, state.explorers.length - 1) * 4;
+  const role = roleDefinitions[explorer.roleId] || roleDefinitions.woodcutter;
+  const speed = role.speed + Math.max(0, state.explorers.length - 1) * 4;
   explorer.x = clamp(explorer.x + (dx / length) * speed * dt, world.minX + 40, world.maxX - 40);
   explorer.y += (dy / length) * speed * dt;
   explorer.face = dx >= 0 ? 1 : -1;
@@ -308,6 +385,7 @@ function updateMaterials(dt) {
 
 function updateExplorers(dt) {
   for (const explorer of state.explorers) {
+    const role = roleDefinitions[explorer.roleId] || roleDefinitions.woodcutter;
     explorer.clock += dt;
     if (explorer.target && explorer.target.amount <= 0) {
       explorer.target = null;
@@ -319,22 +397,22 @@ function updateExplorers(dt) {
       const near = distance(explorer.x, explorer.y, target.x, target.y) < 64;
       if (near) {
         explorer.gather += dt;
-        explorer.action = "chop";
-        explorer.status = "CHOP WOOD";
+        explorer.action = role.workAction;
+        explorer.status = role.status.work;
         explorer.chopTimer -= dt;
         if (explorer.chopTimer <= 0) {
-          explorer.chopTimer = 0.34;
+          explorer.chopTimer = role.workAction === "adventure" ? 0.52 : 0.34;
           target.shake = 1;
-          playSfx("chop");
+          playSfx(role.sfx);
         }
-        if (explorer.gather >= 1.35) {
+        if (explorer.gather >= role.gatherTime) {
           state.inventory[target.kind] += target.amount;
           addPopup(`+${target.amount} ${kinds[target.kind].title}`, target.x, target.y + 38, kinds[target.kind].color);
           state.materials = state.materials.filter((item) => item.id !== target.id);
           playSfx("collect");
           explorer.target = null;
           explorer.gather = 0;
-          explorer.status = "TREE SEARCH";
+          explorer.status = role.status.search;
           explorer.action = "idle";
         }
       } else {
@@ -345,14 +423,15 @@ function updateExplorers(dt) {
           playSfx("step");
         }
         explorer.gather = 0;
-        explorer.status = "TO TREE";
+        explorer.status = role.status.travel;
       }
     } else {
       if (explorer.scoutX === null || Math.abs(explorer.x - explorer.scoutX) < 40) {
         const direction = Math.random() < 0.5 ? -1 : 1;
-        explorer.scoutX = clamp(explorer.x + direction * rand(360, 820), world.minX + 80, world.maxX - 80);
+        const range = explorer.roleId === "adventurer" ? rand(620, 1260) : rand(360, 820);
+        explorer.scoutX = clamp(explorer.x + direction * range, world.minX + 80, world.maxX - 80);
       }
-      explorer.status = "SCOUT";
+      explorer.status = role.status.scout;
       const moved = moveToward(explorer, explorer.scoutX, surfaceY(explorer.scoutX) + 58, dt);
       explorer.stepTimer -= dt;
       if (moved && explorer.stepTimer <= 0) {
@@ -362,7 +441,7 @@ function updateExplorers(dt) {
     }
     explorer.y += (surfaceY(explorer.x) + 58 - explorer.y) * 0.18;
     const center = Math.round(explorer.x / world.tile);
-    for (let column = center - 8; column <= center + 8; column += 1) {
+    for (let column = center - role.discoveryRadius; column <= center + role.discoveryRadius; column += 1) {
       state.discovered.add(column);
     }
   }
@@ -706,65 +785,92 @@ function drawGate() {
 
 function drawExplorer(explorer) {
   const x = explorer.x;
+  const role = roleDefinitions[explorer.roleId] || roleDefinitions.woodcutter;
   const walking = explorer.action === "walk";
   const walk = walking ? Math.sin(explorer.clock * 10) : 0;
-  const chop = explorer.action === "chop" ? Math.sin(explorer.gather * 22) : 0;
+  const work = explorer.action !== "walk" && explorer.action !== "idle" ? Math.sin(explorer.gather * 22) : 0;
   const footY = explorer.y - 58;
-  const bodyY = footY + (walking ? Math.abs(walk) * 1.5 : 0);
+  const actorScale = 0.58;
+  const bodyLift = walking ? Math.abs(walk) * 1.4 : 0;
   const face = explorer.face;
   const palette = explorer.palette || woodcutterPalettes[0];
   const leftLift = walking ? Math.max(0, walk) * 4 : 0;
   const rightLift = walking ? Math.max(0, -walk) * 4 : 0;
   const leftStep = walking ? -walk * face * 3 : 0;
   const rightStep = walking ? walk * face * 3 : 0;
-  const leftFootX = x - 9 + leftStep;
-  const rightFootX = x + 8 + rightStep;
+  const drawFoot = (dx, bottom, w, h, color, lift = 0) => {
+    drawRectFromGround(x + dx * actorScale, footY, (bottom + lift) * actorScale, w * actorScale, h * actorScale, color);
+  };
+  const drawBody = (dx, bottom, w, h, color) => {
+    drawRectFromGround(x + dx * actorScale, footY + bodyLift * actorScale, bottom * actorScale, w * actorScale, h * actorScale, color);
+  };
+  const drawSteps = (dx, bottom, steps, stepX, stepY, size, color) => {
+    for (let i = 0; i < steps; i += 1) {
+      drawBody(dx + i * stepX, bottom + i * stepY, size, size, color);
+    }
+  };
   const capeSwing = walking ? walk * 1.5 : 0;
 
-  drawRectFromGround(x + 18 + capeSwing, bodyY, 8, 13, 34, palette.purpleDark);
-  drawRectFromGround(x + 24 + capeSwing, bodyY, 2, 9, 20, palette.purple);
-  drawRectFromGround(x + 13 + capeSwing, bodyY, 36, 8, 10, palette.purple);
+  drawBody(18 + capeSwing, 8, 13, role.tool === "sword" ? 39 : 34, palette.purpleDark);
+  drawBody(24 + capeSwing, 2, 9, role.tool === "sword" ? 25 : 20, palette.purple);
+  drawBody(13 + capeSwing, 36, 8, 10, palette.purple);
 
-  drawRectFromGround(leftFootX, footY, leftLift, 9, 6, palette.black);
-  drawRectFromGround(rightFootX, footY, rightLift, 9, 6, palette.black);
-  drawRectFromGround(leftFootX + 1, footY, 6 + leftLift, 6, 17 - leftLift * 0.45, palette.tunicDark);
-  drawRectFromGround(rightFootX - 1, footY, 6 + rightLift, 6, 17 - rightLift * 0.45, palette.hoodDark);
-  drawRectFromGround(x - 1, bodyY, 21, 28, 30, palette.outline);
-  drawRectFromGround(x - 2, bodyY, 24, 20, 25, palette.tunic);
-  drawRectFromGround(x - 9, bodyY, 25, 5, 22, palette.hoodMid);
-  drawRectFromGround(x + 8, bodyY, 27, 5, 20, palette.purple);
-  drawRectFromGround(x - 1, bodyY, 32, 23, 3, palette.outline);
-  drawRectFromGround(x + 1, bodyY, 35, 10, 4, palette.belt);
-  drawRectFromGround(x - 1, bodyY, 47, 22, 17, palette.skin);
-  drawRectFromGround(x - 1, bodyY, 49, 17, 12, palette.hoodLight);
-  drawRectFromGround(x - 11, bodyY, 45, 7, 18, palette.hoodMid);
-  drawRectFromGround(x + 10, bodyY, 46, 7, 15, palette.hoodMid);
-  drawRectFromGround(x - 12, bodyY, 55, 6, 9, palette.black);
-  drawRectFromGround(x + 8, bodyY, 55, 9, 9, palette.hoodDark);
-  drawRectFromGround(x - 1, bodyY, 60, 29, 7, palette.hoodMid);
-  drawRectFromGround(x - 1, bodyY, 66, 20, 6, palette.hoodLight);
-  drawRectFromGround(x - 4 * face, bodyY, 54, 3, 4, palette.black);
-  drawRectFromGround(x + 5 * face, bodyY, 54, 2, 4, "#f4f8ff");
-  drawRectFromGround(x + 8 * face, bodyY, 49, 6, 2, "#7a4b43");
-  drawPixelStepsFromGround(x + 4, bodyY, 70, 5, 5, 4, 4, palette.purpleDark);
-  drawPixelStepsFromGround(x + 6, bodyY, 73, 4, 5, -2, 4, palette.purple);
-  drawRectFromGround(x - 15, bodyY, 24, 5, 13, palette.black);
-  drawRectFromGround(x + 13, bodyY, 26, 5, 13, palette.skin);
-  const axeBaseX = x + 14 * face;
-  if (explorer.action === "chop") {
-    const raised = chop > 0 ? 1 : -1;
-    drawPixelStepsFromGround(axeBaseX, bodyY, 24 + raised * 6, 8, 3 * face, 5 * raised, 3, palette.wood);
-    drawRectFromGround(x + 36 * face, bodyY, 51 + raised * 17, 14, 5, palette.metal);
-    drawRectFromGround(x + 42 * face, bodyY, 47 + raised * 17, 6, 9, palette.metalLight);
-    drawRectFromGround(x + 30 * face, bodyY, 50 + raised * 17, 5, 8, palette.hoodDark);
+  drawFoot(-9 + leftStep, leftLift, 9, 6, palette.black);
+  drawFoot(8 + rightStep, rightLift, 9, 6, palette.black);
+  drawFoot(-8 + leftStep, 6, 6, 17 - leftLift * 0.45, palette.tunicDark, leftLift);
+  drawFoot(7 + rightStep, 6, 6, 17 - rightLift * 0.45, palette.hoodDark, rightLift);
+  drawBody(-1, 21, 28, 30, palette.outline);
+  drawBody(-2, 24, 20, 25, palette.tunic);
+  drawBody(-9, 25, 5, 22, palette.hoodMid);
+  drawBody(8, 27, 5, 20, palette.purple);
+  drawBody(-1, 32, 23, 3, palette.outline);
+  drawBody(1, 35, 10, 4, palette.belt);
+  drawBody(-1, 47, 22, 17, palette.skin);
+  drawBody(-1, 49, 17, 12, palette.hoodLight);
+  drawBody(-11, 45, 7, 18, palette.hoodMid);
+  drawBody(10, 46, 7, 15, palette.hoodMid);
+  drawBody(-12, 55, 6, 9, palette.black);
+  drawBody(8, 55, 9, 9, palette.hoodDark);
+  drawBody(-1, 60, 29, 7, palette.hoodMid);
+  drawBody(-1, 66, 20, 6, palette.hoodLight);
+  drawBody(-4 * face, 54, 3, 4, palette.black);
+  drawBody(5 * face, 54, 2, 4, "#f4f8ff");
+  drawBody(8 * face, 49, 6, 2, "#7a4b43");
+  drawSteps(4, 70, 5, 5, 4, 4, palette.purpleDark);
+  drawSteps(6, 73, 4, 5, -2, 4, palette.purple);
+  drawBody(-15, 24, 5, 13, palette.black);
+  drawBody(13, 26, 5, 13, palette.skin);
+
+  const toolBaseX = 14 * face;
+  if (role.tool === "axe") {
+    const raised = explorer.action === "chop" && work > 0 ? 1 : -1;
+    drawSteps(toolBaseX, explorer.action === "chop" ? 24 + raised * 6 : 18, 8, 3 * face, explorer.action === "chop" ? 5 * raised : 5, 3, palette.wood);
+    drawBody(36 * face, explorer.action === "chop" ? 51 + raised * 17 : 57, 14, 5, palette.metal);
+    drawBody(42 * face, explorer.action === "chop" ? 47 + raised * 17 : 53, 6, 9, palette.metalLight);
+    drawBody(30 * face, explorer.action === "chop" ? 50 + raised * 17 : 53, 5, 8, palette.hoodDark);
+  } else if (role.tool === "shovel") {
+    const push = explorer.action === "dig" ? (work > 0 ? 5 : -3) : 0;
+    drawSteps(toolBaseX, 12 + push, 9, 2 * face, 4, 3, palette.wood);
+    drawBody(31 * face, 6 + push, 10, 5, palette.metal);
+    drawBody(35 * face, 3 + push, 6, 9, palette.metalLight);
+    if (explorer.action === "dig" && work < -0.15) {
+      drawBody(37 * face, 2, 4, 4, "#7a6042");
+      drawBody(43 * face, 5, 3, 3, "#9a7650");
+    }
   } else {
-    drawPixelStepsFromGround(axeBaseX, bodyY, 18, 8, 2 * face, 5, 3, palette.wood);
-    drawRectFromGround(x + 28 * face, bodyY, 57, 13, 5, palette.metal);
-    drawRectFromGround(x + 34 * face, bodyY, 53, 5, 9, palette.metalLight);
+    const glow = explorer.action === "adventure" ? Math.abs(work) : 0;
+    drawBody(18 * face, 18, 3, 48, palette.metal);
+    drawBody(22 * face, 54, 5, 15, glow > 0.4 ? "#f1ffff" : palette.metalLight);
+    drawBody(13 * face, 31, 10, 4, palette.purple);
+    if (glow > 0.55) {
+      drawBody(31 * face, 60, 4, 4, "#eaffff");
+      drawBody(36 * face, 68, 3, 3, "#9df8ff");
+    }
   }
-  if (explorer.action === "chop" && chop < -0.25) {
-    drawRectFromGround(x + 38 * face, bodyY, 22, 3, 3, "#f4d29b");
-    drawRectFromGround(x + 46 * face, bodyY, 29, 3, 3, "#ffdca8");
+
+  if ((explorer.action === "chop" || explorer.action === "dig") && work < -0.25) {
+    drawBody(38 * face, 22, 3, 3, "#f4d29b");
+    drawBody(46 * face, 29, 3, 3, "#ffdca8");
   }
 }
 
@@ -794,15 +900,25 @@ function draw() {
 }
 
 function updateUi() {
-  ui.workers.textContent = `WOODCUTTERS ${state.explorers.length} / SUMMONS ${state.summons}`;
-  const task = state.explorers[0] ? state.explorers[0].status : "TAP SUMMON";
-  ui.status.textContent = state.paused ? "STATUS PAUSED" : `STATUS ${task}`;
-  ui.field.textContent = `FIELD ${world.maxX - world.minX}px / NODES ${state.materials.length}`;
+  const roleCounts = Object.fromEntries(Object.keys(roleDefinitions).map((roleId) => [roleId, 0]));
+  for (const explorer of state.explorers) {
+    roleCounts[explorer.roleId] = (roleCounts[explorer.roleId] || 0) + 1;
+  }
+  ui.workers.textContent = `仲間 ${state.explorers.length} / 木${roleCounts.woodcutter} 掘${roleCounts.digger} 冒${roleCounts.adventurer}`;
+  const task = state.explorers[0] ? state.explorers[0].status : "召喚待ち";
+  const selected = currentRole();
+  ui.status.textContent = state.paused ? "状態 一時停止" : `状態 ${task} / 選択 ${selected.title}`;
+  ui.field.textContent = `フィールド ${world.maxX - world.minX}px / 素材 ${state.materials.length}`;
   ui.inventory.innerHTML = Object.keys(kinds).map((kind) => (
     `<li style="color:${kinds[kind].color}">${kinds[kind].title} ${state.inventory[kind]}</li>`
   )).join("");
-  ui.pause.textContent = state.paused ? "RESUME" : "PAUSE";
+  ui.pause.textContent = state.paused ? "再開" : "停止";
   ui.summon.classList.toggle("locked", !canSummon());
+  ui.summon.textContent = `召喚 ${selected.title}`;
+  for (const button of ui.roleButtons) {
+    const isActive = button.dataset.role === state.selectedRole;
+    button.classList.toggle("active", isActive);
+  }
 
   const first = state.explorers[0];
   if (first) {
@@ -843,14 +959,24 @@ function reset() {
   state.inventory = Object.fromEntries(Object.keys(kinds).map((kind) => [kind, 0]));
   state.discovered.clear();
   state.summons = 0;
+  state.selectedRole = "woodcutter";
   state.paused = false;
   state.camera.x = 0;
   state.camera.y = -80;
   createMaterials();
-  addPopup("RESET", 0, surfaceY(0) + 110, "#ffffff");
+  addPopup("リセット", 0, surfaceY(0) + 110, "#ffffff");
+}
+
+function selectRole(roleId) {
+  if (!roleDefinitions[roleId]) return;
+  state.selectedRole = roleId;
+  updateUi();
 }
 
 ui.summon.addEventListener("click", summonExplorer);
+for (const button of ui.roleButtons) {
+  button.addEventListener("click", () => selectRole(button.dataset.role));
+}
 ui.pause.addEventListener("click", () => {
   state.paused = !state.paused;
 });

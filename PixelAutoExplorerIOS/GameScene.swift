@@ -13,11 +13,11 @@ enum MaterialKind: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .wood: return "WOOD"
-        case .stone: return "STONE"
-        case .ore: return "ORE"
-        case .herb: return "HERB"
-        case .crystal: return "CRYSTAL"
+        case .wood: return "木材"
+        case .stone: return "石材"
+        case .ore: return "鉱石"
+        case .herb: return "薬草"
+        case .crystal: return "水晶"
         }
     }
 
@@ -66,11 +66,14 @@ private final class Explorer {
     var stepSoundCooldown: TimeInterval = 0
     var chopSoundCooldown: TimeInterval = 0
     var facing: CGFloat = 1
+    let role: ExplorerRole
     var action: ExplorerAction = .idle
     var status = "IDLE"
 
-    init(node: SKNode) {
+    init(node: SKNode, role: ExplorerRole) {
         self.node = node
+        self.role = role
+        self.status = role.searchStatus
     }
 }
 
@@ -78,12 +81,117 @@ private enum ExplorerAction {
     case idle
     case walk
     case chop
+    case dig
+    case adventure
+}
+
+private enum ExplorerRole: String, CaseIterable {
+    case woodcutter
+    case digger
+    case adventurer
+
+    var title: String {
+        switch self {
+        case .woodcutter: return "木こり"
+        case .digger: return "掘り師"
+        case .adventurer: return "冒険者"
+        }
+    }
+
+    var targetKinds: [MaterialKind] {
+        switch self {
+        case .woodcutter: return [.wood]
+        case .digger: return [.stone, .ore]
+        case .adventurer: return [.herb, .crystal]
+        }
+    }
+
+    var costWood: Int {
+        switch self {
+        case .woodcutter: return 12
+        case .digger: return 10
+        case .adventurer: return 14
+        }
+    }
+
+    var speed: CGFloat {
+        switch self {
+        case .woodcutter: return 124
+        case .digger: return 116
+        case .adventurer: return 138
+        }
+    }
+
+    var gatherTime: TimeInterval {
+        switch self {
+        case .woodcutter: return 1.35
+        case .digger: return 1.55
+        case .adventurer: return 1.10
+        }
+    }
+
+    var discoveryRadius: Int {
+        switch self {
+        case .woodcutter: return 8
+        case .digger: return 7
+        case .adventurer: return 14
+        }
+    }
+
+    var workAction: ExplorerAction {
+        switch self {
+        case .woodcutter: return .chop
+        case .digger: return .dig
+        case .adventurer: return .adventure
+        }
+    }
+
+    var searchStatus: String {
+        switch self {
+        case .woodcutter: return "木を探す"
+        case .digger: return "地面を調査"
+        case .adventurer: return "冒険準備"
+        }
+    }
+
+    var travelStatus: String {
+        switch self {
+        case .woodcutter: return "木へ移動"
+        case .digger: return "採掘場所へ"
+        case .adventurer: return "冒険へ"
+        }
+    }
+
+    var workStatus: String {
+        switch self {
+        case .woodcutter: return "伐採中"
+        case .digger: return "土を掘る"
+        case .adventurer: return "発見中"
+        }
+    }
+
+    var scoutStatus: String {
+        switch self {
+        case .woodcutter: return "木を探す"
+        case .digger: return "鉱脈探し"
+        case .adventurer: return "冒険中"
+        }
+    }
+
+    var noneStatus: String {
+        switch self {
+        case .woodcutter: return "木がない"
+        case .digger: return "掘る場所なし"
+        case .adventurer: return "発見なし"
+        }
+    }
 }
 
 private enum GameSfx {
     case summon
     case step
     case chop
+    case dig
     case collect
     case denied
 }
@@ -121,6 +229,7 @@ private final class ProceduralSfx {
         case .summon: duration = 0.22
         case .step: duration = 0.06
         case .chop: duration = 0.11
+        case .dig: duration = 0.12
         case .collect: duration = 0.16
         case .denied: duration = 0.14
         }
@@ -142,6 +251,8 @@ private final class ProceduralSfx {
                 sample = sin(t * 105 * .pi * 2) * 0.08 * fade + Double.random(in: -0.04...0.04) * fade
             case .chop:
                 sample = sin(t * 176 * .pi * 2) * 0.18 * fade + Double.random(in: -0.16...0.16) * fade
+            case .dig:
+                sample = sin(t * 118 * .pi * 2) * 0.13 * fade + Double.random(in: -0.12...0.12) * fade
             case .collect:
                 sample = (sin(t * 523 * .pi * 2) + sin(t * 659 * .pi * 2)) * 0.10 * fade
             case .denied:
@@ -165,8 +276,8 @@ final class GameScene: SKScene {
     private let tileSize: CGFloat = 32
     private let renderTileSize: CGFloat = 16
     private let cameraZoom: CGFloat = 1.28
-    private let explorerBaseScale: CGFloat = 1.32
-    private let explorerGroundOffset: CGFloat = 53
+    private let explorerBaseScale: CGFloat = 0.58
+    private let explorerGroundOffset: CGFloat = 23
     private let materialCount = 210
     private let worldMinX: CGFloat = -5600
     private let worldMaxX: CGFloat = 5600
@@ -182,6 +293,7 @@ final class GameScene: SKScene {
     private var lastTime: TimeInterval = 0
     private var isPausedByPlayer = false
     private var summonCount = 0
+    private var selectedRole: ExplorerRole = .woodcutter
 
     private let titleLabel = SKLabelNode(fontNamed: "Menlo-Bold")
     private let statusLabel = SKLabelNode(fontNamed: "Menlo-Bold")
@@ -197,6 +309,9 @@ final class GameScene: SKScene {
     private let miniMapBack = SKShapeNode(rectOf: CGSize(width: 176, height: 12), cornerRadius: 2)
     private let miniMapExplorer = SKShapeNode(rectOf: CGSize(width: 7, height: 14), cornerRadius: 1)
     private let miniMapTarget = SKShapeNode(rectOf: CGSize(width: 5, height: 10), cornerRadius: 1)
+    private var roleButtons: [ExplorerRole: SKShapeNode] = [:]
+    private var roleTexts: [ExplorerRole: SKLabelNode] = [:]
+    private var roleButtonFrames: [ExplorerRole: CGRect] = [:]
 
     private var summonButtonFrame = CGRect.zero
     private var pauseButtonFrame = CGRect.zero
@@ -586,7 +701,7 @@ final class GameScene: SKScene {
         titleLabel.fontSize = 16
         titleLabel.fontColor = .white
         titleLabel.horizontalAlignmentMode = .left
-        titleLabel.text = "PIXEL AUTO EXPLORER"
+        titleLabel.text = "ドット自動冒険"
         hudNode.addChild(titleLabel)
 
         [statusLabel, distanceLabel, workerLabel].forEach { label in
@@ -605,15 +720,26 @@ final class GameScene: SKScene {
             hudNode.addChild(label)
         }
 
-        configureButton(summonButton, label: summonText, title: "SUMMON")
-        configureButton(pauseButton, label: pauseText, title: "PAUSE")
-        configureButton(resetButton, label: resetText, title: "RESET")
+        configureButton(summonButton, label: summonText, title: "召喚")
+        configureButton(pauseButton, label: pauseText, title: "停止")
+        configureButton(resetButton, label: resetText, title: "リセット")
         hudNode.addChild(summonButton)
         hudNode.addChild(summonText)
         hudNode.addChild(pauseButton)
         hudNode.addChild(pauseText)
         hudNode.addChild(resetButton)
         hudNode.addChild(resetText)
+
+        for role in ExplorerRole.allCases {
+            let button = SKShapeNode(rectOf: CGSize(width: 72, height: 34), cornerRadius: 5)
+            let label = SKLabelNode(fontNamed: "Menlo-Bold")
+            configureButton(button, label: label, title: role.title)
+            label.fontSize = 12
+            roleButtons[role] = button
+            roleTexts[role] = label
+            hudNode.addChild(button)
+            hudNode.addChild(label)
+        }
 
         miniMapBack.fillColor = SKColor(white: 0.07, alpha: 0.62)
         miniMapBack.strokeColor = SKColor(white: 1, alpha: 0.22)
@@ -662,6 +788,13 @@ final class GameScene: SKScene {
         pauseButtonFrame = CGRect(x: pauseButton.position.x - 41, y: pauseButton.position.y - 18, width: 82, height: 36)
         resetButtonFrame = CGRect(x: resetButton.position.x - 41, y: resetButton.position.y - 18, width: 82, height: 36)
 
+        for (offset, role) in ExplorerRole.allCases.enumerated() {
+            let position = CGPoint(x: left + 36 + CGFloat(offset * 78), y: -size.height / 2 + 58)
+            roleButtons[role]?.position = position
+            roleTexts[role]?.position = position
+            roleButtonFrames[role] = CGRect(x: position.x - 36, y: position.y - 17, width: 72, height: 34)
+        }
+
         miniMapBack.position = CGPoint(x: 0, y: top - 4)
         updateMiniMap()
     }
@@ -669,28 +802,28 @@ final class GameScene: SKScene {
     private func summonExplorer() {
         guard canSummon else {
             ProceduralSfx.shared.play(.denied)
-            showPopup("NEED 12 WOOD", at: CGPoint(x: cameraRig.position.x, y: cameraRig.position.y + 90), color: .white)
+            showPopup("木材 \(selectedRole.costWood) 必要", at: CGPoint(x: cameraRig.position.x, y: cameraRig.position.y + 90), color: .white)
             return
         }
         if summonCount > 0 {
-            inventory[.wood, default: 0] -= 12
+            inventory[.wood, default: 0] -= selectedRole.costWood
         }
         summonCount += 1
-        let node = makeExplorerNode(index: summonCount)
+        let node = makeExplorerNode(index: summonCount, role: selectedRole)
         node.position = CGPoint(x: CGFloat.random(in: -20...20), y: surfaceY(at: 0) + explorerGroundOffset)
         node.zPosition = 12
         actorLayer.addChild(node)
-        let explorer = Explorer(node: node)
+        let explorer = Explorer(node: node, role: selectedRole)
         explorers.append(explorer)
         ProceduralSfx.shared.play(.summon)
-        showPopup("WOODCUTTER #\(summonCount)", at: node.position + CGPoint(x: 0, y: 64), color: SKColor(red: 1.0, green: 0.86, blue: 0.32, alpha: 1))
+        showPopup("\(selectedRole.title) #\(summonCount)", at: node.position + CGPoint(x: 0, y: 64), color: SKColor(red: 1.0, green: 0.86, blue: 0.32, alpha: 1))
     }
 
     private var canSummon: Bool {
-        summonCount == 0 || inventory[.wood, default: 0] >= 12
+        summonCount == 0 || inventory[.wood, default: 0] >= selectedRole.costWood
     }
 
-    private func makeExplorerNode(index: Int) -> SKNode {
+    private func makeExplorerNode(index: Int, role: ExplorerRole) -> SKNode {
         let root = SKNode()
         let variant = (index - 1).isMultiple(of: 2)
         let outline = SKColor(red: 0.07, green: 0.08, blue: 0.10, alpha: 1)
@@ -741,14 +874,30 @@ final class GameScene: SKScene {
         }
         addPixel(to: root, color: outline, rect: CGRect(x: -17, y: -17, width: 5, height: 13))
         addPixel(to: root, color: skin, rect: CGRect(x: 13, y: -14, width: 5, height: 13))
-        addPixel(to: root, color: wood, rect: CGRect(x: 16, y: -24, width: 3, height: 48))
-        for step in 0..<5 {
-            let offset = CGFloat(step)
-            addPixel(to: root, color: wood, rect: CGRect(x: 18 + offset * 2, y: 18 + offset * 5, width: 4, height: 4))
+        switch role {
+        case .woodcutter:
+            addPixel(to: root, color: wood, rect: CGRect(x: 16, y: -24, width: 3, height: 48))
+            for step in 0..<5 {
+                let offset = CGFloat(step)
+                addPixel(to: root, color: wood, rect: CGRect(x: 18 + offset * 2, y: 18 + offset * 5, width: 4, height: 4))
+            }
+            addPixel(to: root, color: metal, rect: CGRect(x: 27, y: 47, width: 14, height: 5))
+            addPixel(to: root, color: metalLight, rect: CGRect(x: 35, y: 43, width: 5, height: 9))
+            addPixel(to: root, color: hoodDark, rect: CGRect(x: 22, y: 46, width: 5, height: 8))
+        case .digger:
+            addPixel(to: root, color: wood, rect: CGRect(x: 16, y: -27, width: 3, height: 46))
+            for step in 0..<6 {
+                let offset = CGFloat(step)
+                addPixel(to: root, color: wood, rect: CGRect(x: 18 + offset * 2, y: -19 + offset * 5, width: 4, height: 4))
+            }
+            addPixel(to: root, color: metal, rect: CGRect(x: 27, y: -1, width: 13, height: 6))
+            addPixel(to: root, color: metalLight, rect: CGRect(x: 34, y: -5, width: 6, height: 10))
+        case .adventurer:
+            addPixel(to: root, color: metal, rect: CGRect(x: 17, y: -16, width: 3, height: 51))
+            addPixel(to: root, color: metalLight, rect: CGRect(x: 21, y: 34, width: 5, height: 16))
+            addPixel(to: root, color: purple, rect: CGRect(x: 12, y: -1, width: 10, height: 4))
+            addPixel(to: root, color: SKColor(red: 0.70, green: 0.96, blue: 1.0, alpha: 1), rect: CGRect(x: 28, y: 47, width: 4, height: 4))
         }
-        addPixel(to: root, color: metal, rect: CGRect(x: 27, y: 47, width: 14, height: 5))
-        addPixel(to: root, color: metalLight, rect: CGRect(x: 35, y: 43, width: 5, height: 9))
-        addPixel(to: root, color: hoodDark, rect: CGRect(x: 22, y: 46, width: 5, height: 8))
         root.setScale(explorerBaseScale)
         return root
     }
@@ -766,18 +915,18 @@ final class GameScene: SKScene {
                 let distance = explorer.node.position.distance(to: target.node.position)
                 if distance < 64 {
                     explorer.gatherTimer += dt
-                    explorer.action = .chop
-                    explorer.status = "CHOP WOOD"
+                    explorer.action = explorer.role.workAction
+                    explorer.status = explorer.role.workStatus
                     explorer.chopSoundCooldown -= dt
                     if explorer.chopSoundCooldown <= 0 {
-                        explorer.chopSoundCooldown = 0.34
-                        ProceduralSfx.shared.play(.chop)
+                        explorer.chopSoundCooldown = explorer.role == .adventurer ? 0.52 : 0.34
+                        ProceduralSfx.shared.play(soundForWork(role: explorer.role))
                         target.node.run(.sequence([
                             .moveBy(x: 5 * explorer.facing, y: 0, duration: 0.04),
                             .moveBy(x: -5 * explorer.facing, y: 0, duration: 0.04)
                         ]))
                     }
-                    if explorer.gatherTimer >= 1.35 {
+                    if explorer.gatherTimer >= explorer.role.gatherTime {
                         collect(target, by: explorer)
                         explorer.gatherTimer = 0
                     }
@@ -786,7 +935,7 @@ final class GameScene: SKScene {
                         playStepIfNeeded(for: explorer, dt: dt)
                     }
                     explorer.gatherTimer = 0
-                    explorer.status = "TO TREE"
+                    explorer.status = explorer.role.travelStatus
                 }
             } else {
                 scout(explorer, dt: dt)
@@ -796,37 +945,46 @@ final class GameScene: SKScene {
         }
     }
 
+    private func soundForWork(role: ExplorerRole) -> GameSfx {
+        switch role {
+        case .woodcutter: return .chop
+        case .digger: return .dig
+        case .adventurer: return .collect
+        }
+    }
+
     private func assignTarget(to explorer: Explorer) {
-        let available = materials.filter { $0.kind == .wood && $0.amount > 0 && $0.reservedBy == nil }
+        let available = materials.filter { explorer.role.targetKinds.contains($0.kind) && $0.amount > 0 && $0.reservedBy == nil }
         guard !available.isEmpty else {
-            explorer.status = "NO TREES"
+            explorer.status = explorer.role.noneStatus
             explorer.action = .idle
             return
         }
         let current = explorer.node.position
         let target = available.min { left, right in
-            targetScore(left, from: current) < targetScore(right, from: current)
+            targetScore(left, from: current, role: explorer.role) < targetScore(right, from: current, role: explorer.role)
         }
         explorer.target = target
         explorer.target?.reservedBy = explorer.id
     }
 
-    private func targetScore(_ spot: MaterialSpot, from point: CGPoint) -> CGFloat {
-        guard spot.kind == .wood else { return .greatestFiniteMagnitude }
+    private func targetScore(_ spot: MaterialSpot, from point: CGPoint, role: ExplorerRole) -> CGFloat {
+        guard role.targetKinds.contains(spot.kind) else { return .greatestFiniteMagnitude }
         let distance = point.distance(to: spot.node.position)
         let column = Int(spot.node.position.x / tileSize)
-        let discoveryBonus: CGFloat = discoveredColumns.contains(column) ? 130 : -220
+        let discoveryBonus: CGFloat = discoveredColumns.contains(column) ? 110 : -220
         return distance + discoveryBonus
     }
 
     private func scout(_ explorer: Explorer, dt: TimeInterval) {
         if explorer.scoutTarget == nil || explorer.node.position.distance(to: explorer.scoutTarget ?? .zero) < 40 {
             let direction: CGFloat = Bool.random() ? 1 : -1
-            let x = (explorer.node.position.x + direction * CGFloat.random(in: 360...820)).clamped(to: worldMinX + 80...worldMaxX - 80)
+            let range = explorer.role == .adventurer ? CGFloat.random(in: 620...1260) : CGFloat.random(in: 360...820)
+            let x = (explorer.node.position.x + direction * range).clamped(to: worldMinX + 80...worldMaxX - 80)
             explorer.scoutTarget = CGPoint(x: x, y: surfaceY(at: x) + explorerGroundOffset)
         }
         if let point = explorer.scoutTarget {
-            explorer.status = "SCOUT"
+            explorer.status = explorer.role.scoutStatus
             if move(explorer, toward: point, dt: dt) {
                 playStepIfNeeded(for: explorer, dt: dt)
             }
@@ -841,7 +999,7 @@ final class GameScene: SKScene {
             return false
         }
         let direction = delta.normalized()
-        let speed = 124 + CGFloat(explorers.count - 1) * 4
+        let speed = explorer.role.speed + CGFloat(explorers.count - 1) * 4
         explorer.node.position = explorer.node.position + direction * speed * CGFloat(dt)
         explorer.node.position.x = explorer.node.position.x.clamped(to: worldMinX + 40...worldMaxX - 40)
         explorer.facing = direction.dx >= 0 ? 1 : -1
@@ -869,9 +1027,12 @@ final class GameScene: SKScene {
             let step = abs(sin(explorer.walkClock * 10))
             explorer.node.yScale = explorerBaseScale + step * 0.016
             explorer.node.zRotation = sin(explorer.walkClock * 10) * 0.012 * explorer.facing
-        case .chop:
+        case .chop, .dig:
             explorer.node.yScale = explorerBaseScale
             explorer.node.zRotation = sin(explorer.gatherTimer * 22) * 0.075 * explorer.facing
+        case .adventure:
+            explorer.node.yScale = explorerBaseScale
+            explorer.node.zRotation = sin(explorer.gatherTimer * 16) * 0.035 * explorer.facing
         case .idle:
             explorer.node.yScale = explorerBaseScale
             explorer.node.zRotation = 0
@@ -892,7 +1053,7 @@ final class GameScene: SKScene {
         ProceduralSfx.shared.play(.collect)
         explorer.target = nil
         explorer.action = .idle
-        explorer.status = "TREE SEARCH"
+        explorer.status = explorer.role.searchStatus
     }
 
     private func releaseTarget(for explorer: Explorer) {
@@ -904,7 +1065,7 @@ final class GameScene: SKScene {
     private func updateDiscovery() {
         for explorer in explorers {
             let center = Int(explorer.node.position.x / tileSize)
-            for column in (center - 8)...(center + 8) {
+            for column in (center - explorer.role.discoveryRadius)...(center + explorer.role.discoveryRadius) {
                 discoveredColumns.insert(column)
             }
         }
@@ -926,11 +1087,14 @@ final class GameScene: SKScene {
     }
 
     private func updateHud() {
-        workerLabel.text = "WOODCUTTERS \(explorers.count) / SUMMONS \(summonCount)"
+        let woodcutters = explorers.filter { $0.role == .woodcutter }.count
+        let diggers = explorers.filter { $0.role == .digger }.count
+        let adventurers = explorers.filter { $0.role == .adventurer }.count
+        workerLabel.text = "仲間 \(explorers.count) / 木\(woodcutters) 掘\(diggers) 冒\(adventurers)"
         let remaining = materials.count
-        let task = explorers.first?.status ?? "TAP SUMMON"
-        statusLabel.text = isPausedByPlayer ? "STATUS PAUSED" : "STATUS \(task)"
-        distanceLabel.text = "FIELD \(Int(worldMaxX - worldMinX))px / NODES \(remaining)"
+        let task = explorers.first?.status ?? "召喚待ち"
+        statusLabel.text = isPausedByPlayer ? "状態 一時停止" : "状態 \(task) / 選択 \(selectedRole.title)"
+        distanceLabel.text = "フィールド \(Int(worldMaxX - worldMinX))px / 素材 \(remaining)"
         for kind in MaterialKind.allCases {
             resourceLabels[kind]?.text = "\(kind.title) \(inventory[kind, default: 0])"
             resourceLabels[kind]?.fontColor = kind.color
@@ -938,7 +1102,17 @@ final class GameScene: SKScene {
         summonButton.strokeColor = canSummon
             ? SKColor(red: 0.96, green: 0.82, blue: 0.38, alpha: 1)
             : SKColor(red: 0.62, green: 0.62, blue: 0.62, alpha: 0.8)
-        pauseText.text = isPausedByPlayer ? "RESUME" : "PAUSE"
+        summonText.text = "召喚 \(selectedRole.title)"
+        pauseText.text = isPausedByPlayer ? "再開" : "停止"
+        for role in ExplorerRole.allCases {
+            let selected = role == selectedRole
+            roleButtons[role]?.strokeColor = selected
+                ? SKColor(red: 0.56, green: 0.91, blue: 0.94, alpha: 1)
+                : SKColor(red: 0.96, green: 0.82, blue: 0.38, alpha: 1)
+            roleButtons[role]?.fillColor = selected
+                ? SKColor(red: 0.10, green: 0.24, blue: 0.27, alpha: 0.90)
+                : SKColor(red: 0.08, green: 0.10, blue: 0.12, alpha: 0.82)
+        }
     }
 
     private func updateMiniMap() {
@@ -971,9 +1145,10 @@ final class GameScene: SKScene {
         inventory = Dictionary(uniqueKeysWithValues: MaterialKind.allCases.map { ($0, 0) })
         discoveredColumns.removeAll()
         summonCount = 0
+        selectedRole = .woodcutter
         isPausedByPlayer = false
         buildMaterials()
-        showPopup("RESET", at: CGPoint(x: cameraRig.position.x, y: cameraRig.position.y + 80), color: .white)
+        showPopup("リセット", at: CGPoint(x: cameraRig.position.x, y: cameraRig.position.y + 80), color: .white)
     }
 
     private func showPopup(_ text: String, at position: CGPoint, color: SKColor) {
@@ -1019,6 +1194,9 @@ final class GameScene: SKScene {
                 isPausedByPlayer.toggle()
             } else if resetButtonFrame.contains(point) {
                 resetRun()
+            } else if let role = ExplorerRole.allCases.first(where: { roleButtonFrames[$0]?.contains(point) == true }) {
+                selectedRole = role
+                updateHud()
             }
         }
     }

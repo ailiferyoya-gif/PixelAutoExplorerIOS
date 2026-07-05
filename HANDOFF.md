@@ -27,6 +27,7 @@
 - `.nojekyll` is present for static hosting.
 - Finer code-drawn pixel art for trees, materials, the summon gate, and fantasy explorers.
 - Materials and trees are grounded against terrain instead of floating above it.
+- Reference-density pass added leafy tree clusters, smaller sky clouds, terrain speckles, and seamless terrain fills so the scene reads closer to dense 2D pixel action games.
 
 ## Backup
 
@@ -35,6 +36,7 @@
 - A pre-preview backup was created before adding Web preview and Pages files.
 - A pre-publish-notes backup was created before this handoff update.
 - A pre-fine-pixel-grounding backup was created before the latest art and grounding pass.
+- A pre-reference-density backup was created before the denser pixel-art pass.
 
 ## Verification
 
@@ -43,6 +45,7 @@
 - Local browser preview loaded, summoned an explorer, collected materials, and reported no console errors.
 - Local browser screenshot check confirmed trees, stones, ores, herbs, crystals, and the summon gate sit on the terrain.
 - Local browser screenshot check confirmed the summoned explorer reads as a fantasy character with hat, robe, belt, and staff.
+- Local browser screenshot check confirmed the denser terrain and leafy trees match the provided reference granularity more closely.
 - GitHub Pages live URL was rechecked after the fine-pixel grounding pass.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.

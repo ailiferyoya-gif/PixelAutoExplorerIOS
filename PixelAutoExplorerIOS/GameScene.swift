@@ -192,15 +192,16 @@ final class GameScene: SKScene {
             var y = worldMinY
             while y <= surface {
                 let depth = surface - y
-                let tile = SKSpriteNode(color: tileColor(depth: depth, column: column), size: CGSize(width: tileSize - 1, height: tileSize - 1))
+                let tile = SKSpriteNode(color: tileColor(depth: depth, column: column), size: CGSize(width: tileSize + 1, height: tileSize + 1))
                 tile.position = CGPoint(x: x, y: y)
                 tile.zPosition = -3
                 terrainNode.addChild(tile)
+                addTerrainSpeckIfNeeded(x: x, y: y, depth: depth, column: column)
                 y += tileSize
             }
 
             if column % 9 == 0 {
-                addGrassClump(x: x + CGFloat.random(in: -8...8), y: surface + 20)
+                addGrassClump(x: x + CGFloat.random(in: -8...8), y: surface)
             }
         }
 
@@ -232,14 +233,38 @@ final class GameScene: SKScene {
     }
 
     private func addGrassClump(x: CGFloat, y: CGFloat) {
-        let count = Int.random(in: 2...4)
+        let count = Int.random(in: 3...6)
         for index in 0..<count {
-            let blade = SKSpriteNode(color: SKColor(red: 0.36, green: 0.84, blue: 0.35, alpha: 1), size: CGSize(width: 4, height: CGFloat.random(in: 8...18)))
-            blade.position = CGPoint(x: x + CGFloat(index * 5) - 6, y: y)
+            let blade = SKSpriteNode(color: index.isMultiple(of: 2) ? SKColor(red: 0.58, green: 0.86, blue: 0.37, alpha: 1) : SKColor(red: 0.26, green: 0.70, blue: 0.34, alpha: 1), size: CGSize(width: 3, height: CGFloat.random(in: 8...18)))
+            blade.position = CGPoint(x: x + CGFloat(index * 5) - 12, y: y)
             blade.anchorPoint = CGPoint(x: 0.5, y: 0)
             blade.zPosition = 1
             terrainNode.addChild(blade)
         }
+    }
+
+    private func addTerrainSpeckIfNeeded(x: CGFloat, y: CGFloat, depth: CGFloat, column: Int) {
+        let row = Int((y - worldMinY) / tileSize)
+        let hash = abs((column * 73 + row * 41) % 11)
+        guard hash < 4 || depth < 38 else { return }
+        let color: SKColor
+        if depth < 38 {
+            color = hash.isMultiple(of: 2)
+                ? SKColor(red: 0.42, green: 0.72, blue: 0.34, alpha: 1)
+                : SKColor(red: 0.18, green: 0.46, blue: 0.24, alpha: 1)
+        } else if depth < 190 {
+            color = hash.isMultiple(of: 2)
+                ? SKColor(red: 0.54, green: 0.41, blue: 0.26, alpha: 1)
+                : SKColor(red: 0.29, green: 0.22, blue: 0.15, alpha: 1)
+        } else {
+            color = hash.isMultiple(of: 2)
+                ? SKColor(red: 0.29, green: 0.31, blue: 0.35, alpha: 1)
+                : SKColor(red: 0.12, green: 0.13, blue: 0.15, alpha: 1)
+        }
+        let speck = SKSpriteNode(color: color, size: CGSize(width: 6, height: 6))
+        speck.position = CGPoint(x: x + CGFloat((row * 7 + column) % 19) - 9, y: y + CGFloat((row * 5 + column) % 17) - 8)
+        speck.zPosition = -2
+        terrainNode.addChild(speck)
     }
 
     private func buildMaterials() {
@@ -276,14 +301,7 @@ final class GameScene: SKScene {
         let root = SKNode()
         switch kind {
         case .wood:
-            addPixel(to: root, color: SKColor(red: 0.44, green: 0.26, blue: 0.12, alpha: 1), rect: CGRect(x: -10, y: -36, width: 12, height: 38))
-            addPixel(to: root, color: kind.color, rect: CGRect(x: 1, y: -29, width: 8, height: 29))
-            addPixel(to: root, color: SKColor(red: 0.12, green: 0.44, blue: 0.21, alpha: 1), rect: CGRect(x: -27, y: -2, width: 34, height: 14))
-            addPixel(to: root, color: SKColor(red: 0.18, green: 0.56, blue: 0.24, alpha: 1), rect: CGRect(x: -11, y: -5, width: 38, height: 18))
-            addPixel(to: root, color: SKColor(red: 0.30, green: 0.69, blue: 0.27, alpha: 1), rect: CGRect(x: -17, y: 12, width: 30, height: 14))
-            addPixel(to: root, color: SKColor(red: 0.40, green: 0.78, blue: 0.35, alpha: 1), rect: CGRect(x: -23, y: 9, width: 12, height: 10))
-            addPixel(to: root, color: SKColor(red: 0.12, green: 0.40, blue: 0.19, alpha: 1), rect: CGRect(x: 14, y: 7, width: 10, height: 10))
-            addPixel(to: root, color: SKColor(red: 0.65, green: 0.42, blue: 0.20, alpha: 1), rect: CGRect(x: 1, y: -30, width: 3, height: 20))
+            buildFineTree(in: root)
         case .stone:
             addPixel(to: root, color: kind.color, rect: CGRect(x: -20, y: -14, width: 28, height: 12))
             addPixel(to: root, color: SKColor(red: 0.45, green: 0.48, blue: 0.53, alpha: 1), rect: CGRect(x: -3, y: -10, width: 22, height: 12))
@@ -309,6 +327,33 @@ final class GameScene: SKScene {
             addPixel(to: root, color: SKColor(red: 0.92, green: 1.0, blue: 1.0, alpha: 1), rect: CGRect(x: -4, y: 11, width: 8, height: 7))
         }
         return root
+    }
+
+    private func buildFineTree(in root: SKNode) {
+        addPixel(to: root, color: SKColor(red: 0.39, green: 0.22, blue: 0.11, alpha: 1), rect: CGRect(x: -10, y: -36, width: 11, height: 43))
+        addPixel(to: root, color: SKColor(red: 0.55, green: 0.33, blue: 0.16, alpha: 1), rect: CGRect(x: 1, y: -29, width: 7, height: 36))
+        addPixel(to: root, color: SKColor(red: 0.30, green: 0.17, blue: 0.09, alpha: 1), rect: CGRect(x: -14, y: -20, width: 7, height: 23))
+        addPixel(to: root, color: SKColor(red: 0.48, green: 0.28, blue: 0.14, alpha: 1), rect: CGRect(x: 10, y: -16, width: 12, height: 5))
+        addLeafCluster(to: root, color: SKColor(red: 0.30, green: 0.68, blue: 0.26, alpha: 1), rect: CGRect(x: -41, y: -2, width: 34, height: 18), seed: 1)
+        addLeafCluster(to: root, color: SKColor(red: 0.33, green: 0.71, blue: 0.29, alpha: 1), rect: CGRect(x: -22, y: -5, width: 46, height: 22), seed: 2)
+        addLeafCluster(to: root, color: SKColor(red: 0.24, green: 0.59, blue: 0.23, alpha: 1), rect: CGRect(x: 7, y: 3, width: 30, height: 18), seed: 3)
+        addLeafCluster(to: root, color: SKColor(red: 0.47, green: 0.78, blue: 0.36, alpha: 1), rect: CGRect(x: -30, y: 14, width: 38, height: 18), seed: 4)
+        addLeafCluster(to: root, color: SKColor(red: 0.40, green: 0.74, blue: 0.33, alpha: 1), rect: CGRect(x: -3, y: 19, width: 28, height: 15), seed: 5)
+        addPixel(to: root, color: SKColor(red: 0.72, green: 0.94, blue: 0.53, alpha: 1), rect: CGRect(x: -33, y: 11, width: 8, height: 8))
+        addPixel(to: root, color: SKColor(red: 0.80, green: 0.96, blue: 0.60, alpha: 1), rect: CGRect(x: 5, y: 28, width: 6, height: 6))
+    }
+
+    private func addLeafCluster(to node: SKNode, color: SKColor, rect: CGRect, seed: Int) {
+        addPixel(to: node, color: color, rect: rect)
+        let specks = max(2, Int((rect.width * rect.height) / 140))
+        for index in 0..<specks {
+            let xOffset = CGFloat((seed * 17 + index * 11) % max(1, Int(rect.width - 8)))
+            let yOffset = CGFloat((seed * 23 + index * 7) % max(1, Int(rect.height - 8)))
+            let bright = index.isMultiple(of: 2)
+                ? SKColor(red: 0.58, green: 0.85, blue: 0.42, alpha: 1)
+                : SKColor(red: 0.16, green: 0.48, blue: 0.24, alpha: 1)
+            addPixel(to: node, color: bright, rect: CGRect(x: rect.minX + 4 + xOffset, y: rect.minY + 4 + yOffset, width: 5, height: 5))
+        }
     }
 
     private func buildSummonGate() {

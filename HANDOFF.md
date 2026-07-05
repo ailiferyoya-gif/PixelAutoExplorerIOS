@@ -14,6 +14,7 @@
 - Latest live-verified art commit: `13b102d`
 - Latest live-verified woodcutter commit: `c7ec254`
 - Latest live-verified foot-animation commit: `379ed25`
+- Latest live-verified scale and palette commit: `d2e7123`
 
 ## Implemented
 
@@ -35,6 +36,7 @@
 - Ultra-fine pass added 16px terrain cells with 2px highlights/shadows, tiny moss and stone flecks, visible background houses/graves/church silhouettes, denser leafy trees, and smaller explorer equipment details.
 - Woodcutter pass makes summoned units target only wood, changes repeat summon cost to 12 wood, adds walking/chopping states, axe visuals, tree shake/sawdust, and procedural SE for summon, steps, chopping, collect, and denied summon.
 - Foot-animation pass keeps the boots grounded, alternates foot lift/step during walking, moves body/axe from a separate body baseline, and softens the native iOS walk tilt.
+- Scale and palette pass expands the field to 11200px, increases material nodes to 210, zooms the web view to 0.74 scale, zooms out the iOS camera, and changes woodcutters to a pale blue-gray hood, black boots, teal tunic, purple cape/plume, and silver axe palette.
 
 ## Backup
 
@@ -48,6 +50,7 @@
 - A pre-ultra-fine-pixels backup was created before the latest reference-image granularity pass.
 - A pre-woodcutter-actions-se backup was created before adding the woodcutter specialization, animations, and SE.
 - A pre-foot-animation-fix backup was created before correcting the woodcutter walking foot motion.
+- A pre-scale-character-palette backup was created before shrinking the world presentation and changing the woodcutter palette.
 
 ## Verification
 
@@ -62,6 +65,10 @@
 - GitHub Pages default preview loaded `app.js?v=woodcutter-actions-20260706`, summoned a woodcutter, entered `CHOP WOOD`, collected only wood, and reported no console errors.
 - Local D-drive preview loaded `app.js?v=footfix-20260706`, summoned a woodcutter, entered `CHOP WOOD`, and reported no console errors.
 - GitHub Pages default preview loaded `app.js?v=footfix-20260706`, summoned a woodcutter, entered `CHOP WOOD`, and reported no console errors.
+- Local browser preview loaded `app.js?v=scale-palette-20260706`, showed `FIELD 11200px / NODES 210`, summoned a woodcutter, and reported no console errors.
+- Mobile-width browser preview loaded `app.js?v=scale-palette-20260706`, summoned a woodcutter, and reported no console errors.
+- Local D-drive preview loaded `app.js?v=scale-palette-20260706`, summoned a woodcutter, and reported no console errors.
+- GitHub Pages default preview loaded `app.js?v=scale-palette-20260706`, summoned a woodcutter, and reported no console errors.
 - GitHub Pages live URL was rechecked after the fine-pixel grounding pass.
 - GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
 - Root Pages URL redirects to `PreviewWeb/`.

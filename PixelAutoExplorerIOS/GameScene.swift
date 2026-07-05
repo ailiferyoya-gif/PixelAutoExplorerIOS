@@ -1,4 +1,5 @@
 import CoreGraphics
+import AVFoundation
 import Foundation
 import SpriteKit
 import UIKit
@@ -62,11 +63,93 @@ private final class Explorer {
     var scoutTarget: CGPoint?
     var gatherTimer: TimeInterval = 0
     var walkClock: TimeInterval = 0
+    var stepSoundCooldown: TimeInterval = 0
+    var chopSoundCooldown: TimeInterval = 0
     var facing: CGFloat = 1
+    var action: ExplorerAction = .idle
     var status = "IDLE"
 
     init(node: SKNode) {
         self.node = node
+    }
+}
+
+private enum ExplorerAction {
+    case idle
+    case walk
+    case chop
+}
+
+private enum GameSfx {
+    case summon
+    case step
+    case chop
+    case collect
+    case denied
+}
+
+private final class ProceduralSfx {
+    static let shared = ProceduralSfx()
+
+    private let engine = AVAudioEngine()
+    private let player = AVAudioPlayerNode()
+    private let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
+
+    private init() {
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        try? engine.start()
+        player.play()
+    }
+
+    func play(_ kind: GameSfx) {
+        guard let buffer = makeBuffer(for: kind) else { return }
+        if !engine.isRunning {
+            try? engine.start()
+        }
+        if !player.isPlaying {
+            player.play()
+        }
+        player.scheduleBuffer(buffer, completionHandler: nil)
+    }
+
+    private func makeBuffer(for kind: GameSfx) -> AVAudioPCMBuffer? {
+        let duration: Double
+        switch kind {
+        case .summon: duration = 0.22
+        case .step: duration = 0.06
+        case .chop: duration = 0.11
+        case .collect: duration = 0.16
+        case .denied: duration = 0.14
+        }
+        let frameCount = AVAudioFrameCount(format.sampleRate * duration)
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
+              let channel = buffer.floatChannelData?[0] else {
+            return nil
+        }
+        buffer.frameLength = frameCount
+        for index in 0..<Int(frameCount) {
+            let t = Double(index) / format.sampleRate
+            let fade = max(0, 1 - t / duration)
+            let sample: Double
+            switch kind {
+            case .summon:
+                let freq = t < 0.08 ? 392.0 : (t < 0.15 ? 587.0 : 784.0)
+                sample = sin(t * freq * .pi * 2) * 0.16 * fade
+            case .step:
+                sample = sin(t * 105 * .pi * 2) * 0.08 * fade + Double.random(in: -0.04...0.04) * fade
+            case .chop:
+                sample = sin(t * 176 * .pi * 2) * 0.18 * fade + Double.random(in: -0.16...0.16) * fade
+            case .collect:
+                sample = (sin(t * 523 * .pi * 2) + sin(t * 659 * .pi * 2)) * 0.10 * fade
+            case .denied:
+                sample = sin(t * 150 * .pi * 2) * 0.12 * fade
+            }
+            channel[index] = Float(sample)
+        }
+        return buffer
     }
 }
 
@@ -579,12 +662,12 @@ final class GameScene: SKScene {
 
     private func summonExplorer() {
         guard canSummon else {
-            showPopup("NEED 8 WOOD + 5 STONE", at: CGPoint(x: cameraRig.position.x, y: cameraRig.position.y + 90), color: .white)
+            ProceduralSfx.shared.play(.denied)
+            showPopup("NEED 12 WOOD", at: CGPoint(x: cameraRig.position.x, y: cameraRig.position.y + 90), color: .white)
             return
         }
         if summonCount > 0 {
-            inventory[.wood, default: 0] -= 8
-            inventory[.stone, default: 0] -= 5
+            inventory[.wood, default: 0] -= 12
         }
         summonCount += 1
         let node = makeExplorerNode(index: summonCount)
@@ -593,50 +676,49 @@ final class GameScene: SKScene {
         actorLayer.addChild(node)
         let explorer = Explorer(node: node)
         explorers.append(explorer)
-        showPopup("SUMMONED #\(summonCount)", at: node.position + CGPoint(x: 0, y: 64), color: SKColor(red: 1.0, green: 0.86, blue: 0.32, alpha: 1))
+        ProceduralSfx.shared.play(.summon)
+        showPopup("WOODCUTTER #\(summonCount)", at: node.position + CGPoint(x: 0, y: 64), color: SKColor(red: 1.0, green: 0.86, blue: 0.32, alpha: 1))
     }
 
     private var canSummon: Bool {
-        summonCount == 0 || (inventory[.wood, default: 0] >= 8 && inventory[.stone, default: 0] >= 5)
+        summonCount == 0 || inventory[.wood, default: 0] >= 12
     }
 
     private func makeExplorerNode(index: Int) -> SKNode {
         let root = SKNode()
         let robeColors = [
-            SKColor(red: 0.16, green: 0.46, blue: 0.80, alpha: 1),
-            SKColor(red: 0.72, green: 0.25, blue: 0.36, alpha: 1),
-            SKColor(red: 0.30, green: 0.55, blue: 0.26, alpha: 1),
-            SKColor(red: 0.55, green: 0.36, blue: 0.78, alpha: 1)
+            SKColor(red: 0.31, green: 0.55, blue: 0.25, alpha: 1),
+            SKColor(red: 0.55, green: 0.42, blue: 0.20, alpha: 1),
+            SKColor(red: 0.25, green: 0.50, blue: 0.35, alpha: 1),
+            SKColor(red: 0.58, green: 0.44, blue: 0.23, alpha: 1)
         ]
         let robe = robeColors[(index - 1) % robeColors.count]
-        addPixel(to: root, color: SKColor(red: 0.07, green: 0.08, blue: 0.11, alpha: 1), rect: CGRect(x: -14, y: -40, width: 10, height: 6))
-        addPixel(to: root, color: SKColor(red: 0.07, green: 0.08, blue: 0.11, alpha: 1), rect: CGRect(x: 4, y: -40, width: 10, height: 6))
-        addPixel(to: root, color: SKColor(red: 0.15, green: 0.17, blue: 0.21, alpha: 1), rect: CGRect(x: -11, y: -34, width: 6, height: 17))
-        addPixel(to: root, color: SKColor(red: 0.19, green: 0.22, blue: 0.28, alpha: 1), rect: CGRect(x: 5, y: -34, width: 6, height: 17))
+        addPixel(to: root, color: SKColor(red: 0.16, green: 0.10, blue: 0.06, alpha: 1), rect: CGRect(x: -14, y: -40, width: 10, height: 6))
+        addPixel(to: root, color: SKColor(red: 0.16, green: 0.10, blue: 0.06, alpha: 1), rect: CGRect(x: 4, y: -40, width: 10, height: 6))
+        addPixel(to: root, color: SKColor(red: 0.25, green: 0.17, blue: 0.11, alpha: 1), rect: CGRect(x: -11, y: -34, width: 6, height: 17))
+        addPixel(to: root, color: SKColor(red: 0.34, green: 0.22, blue: 0.12, alpha: 1), rect: CGRect(x: 5, y: -34, width: 6, height: 17))
         addPixel(to: root, color: SKColor(red: 0.08, green: 0.10, blue: 0.14, alpha: 1), rect: CGRect(x: -15, y: -18, width: 28, height: 29))
         addPixel(to: root, color: robe, rect: CGRect(x: -11, y: -15, width: 20, height: 25))
-        addPixel(to: root, color: SKColor(red: 0.43, green: 0.23, blue: 0.76, alpha: 1), rect: CGRect(x: -13, y: -13, width: 5, height: 22))
-        addPixel(to: root, color: SKColor(red: 0.70, green: 0.37, blue: 0.94, alpha: 1), rect: CGRect(x: 8, y: -10, width: 5, height: 19))
-        addPixel(to: root, color: SKColor(red: 0.94, green: 0.80, blue: 0.36, alpha: 1), rect: CGRect(x: -12, y: -8, width: 24, height: 3))
-        addPixel(to: root, color: SKColor(red: 0.42, green: 0.23, blue: 0.12, alpha: 1), rect: CGRect(x: -3, y: -4, width: 5, height: 5))
+        addPixel(to: root, color: SKColor(red: 0.55, green: 0.37, blue: 0.16, alpha: 1), rect: CGRect(x: -13, y: -13, width: 5, height: 22))
+        addPixel(to: root, color: SKColor(red: 0.83, green: 0.60, blue: 0.26, alpha: 1), rect: CGRect(x: 8, y: -10, width: 5, height: 19))
+        addPixel(to: root, color: SKColor(red: 0.90, green: 0.78, blue: 0.42, alpha: 1), rect: CGRect(x: -12, y: -8, width: 24, height: 3))
+        addPixel(to: root, color: SKColor(red: 0.34, green: 0.19, blue: 0.10, alpha: 1), rect: CGRect(x: -3, y: -4, width: 5, height: 5))
         addPixel(to: root, color: SKColor(red: 0.96, green: 0.72, blue: 0.48, alpha: 1), rect: CGRect(x: -10, y: 10, width: 20, height: 17))
-        addPixel(to: root, color: SKColor(red: 0.17, green: 0.10, blue: 0.07, alpha: 1), rect: CGRect(x: -15, y: 25, width: 30, height: 7))
-        addPixel(to: root, color: SKColor(red: 0.17, green: 0.10, blue: 0.07, alpha: 1), rect: CGRect(x: -9, y: 32, width: 18, height: 5))
+        addPixel(to: root, color: SKColor(red: 0.74, green: 0.53, blue: 0.22, alpha: 1), rect: CGRect(x: -15, y: 25, width: 30, height: 7))
+        addPixel(to: root, color: SKColor(red: 0.94, green: 0.75, blue: 0.30, alpha: 1), rect: CGRect(x: -9, y: 32, width: 18, height: 5))
         addPixel(to: root, color: SKColor(white: 0.04, alpha: 1), rect: CGRect(x: -6, y: 18, width: 2, height: 2))
         addPixel(to: root, color: SKColor(white: 0.04, alpha: 1), rect: CGRect(x: 6, y: 18, width: 2, height: 2))
         addPixel(to: root, color: SKColor(red: 0.54, green: 0.29, blue: 0.20, alpha: 1), rect: CGRect(x: 4, y: 12, width: 6, height: 2))
-        addPixel(to: root, color: SKColor(red: 0.55, green: 0.44, blue: 0.27, alpha: 1), rect: CGRect(x: 16, y: -24, width: 3, height: 48))
+        addPixel(to: root, color: SKColor(red: 0.47, green: 0.30, blue: 0.16, alpha: 1), rect: CGRect(x: 16, y: -24, width: 3, height: 48))
         for step in 0..<5 {
             let offset = CGFloat(step)
-            addPixel(to: root, color: SKColor(red: 0.38, green: 0.91, blue: 0.94, alpha: 1), rect: CGRect(x: 18 + offset * 2, y: 18 + offset * 5, width: 4, height: 4))
+            addPixel(to: root, color: SKColor(red: 0.47, green: 0.30, blue: 0.16, alpha: 1), rect: CGRect(x: 18 + offset * 2, y: 18 + offset * 5, width: 4, height: 4))
         }
-        for step in 0..<3 {
-            let offset = CGFloat(step)
-            addPixel(to: root, color: SKColor(red: 0.92, green: 1.0, blue: 1.0, alpha: 1), rect: CGRect(x: 25 + offset * 2, y: 42 + offset * 5, width: 3, height: 3))
-        }
+        addPixel(to: root, color: SKColor(red: 0.68, green: 0.72, blue: 0.74, alpha: 1), rect: CGRect(x: 27, y: 47, width: 13, height: 5))
+        addPixel(to: root, color: SKColor(red: 0.86, green: 0.91, blue: 0.92, alpha: 1), rect: CGRect(x: 35, y: 43, width: 5, height: 9))
+        addPixel(to: root, color: SKColor(red: 0.42, green: 0.48, blue: 0.50, alpha: 1), rect: CGRect(x: 22, y: 46, width: 5, height: 8))
         addPixel(to: root, color: SKColor(red: 0.49, green: 0.30, blue: 0.18, alpha: 1), rect: CGRect(x: -16, y: -18, width: 5, height: 12))
-        addPixel(to: root, color: .white, rect: CGRect(x: -14, y: 51, width: 4, height: 4))
-        addPixel(to: root, color: SKColor(red: 0.28, green: 0.84, blue: 1.0, alpha: 1), rect: CGRect(x: -15, y: 57, width: 4, height: 6))
+        addPixel(to: root, color: SKColor(red: 0.88, green: 0.70, blue: 0.34, alpha: 1), rect: CGRect(x: -14, y: 51, width: 4, height: 4))
         root.setScale(1.45)
         return root
     }
@@ -651,18 +733,30 @@ final class GameScene: SKScene {
                 assignTarget(to: explorer)
             }
             if let target = explorer.target {
-                move(explorer, toward: target.node.position, dt: dt)
                 let distance = explorer.node.position.distance(to: target.node.position)
                 if distance < 64 {
                     explorer.gatherTimer += dt
-                    explorer.status = "GATHER \(target.kind.title)"
-                    if explorer.gatherTimer >= 0.72 {
+                    explorer.action = .chop
+                    explorer.status = "CHOP WOOD"
+                    explorer.chopSoundCooldown -= dt
+                    if explorer.chopSoundCooldown <= 0 {
+                        explorer.chopSoundCooldown = 0.34
+                        ProceduralSfx.shared.play(.chop)
+                        target.node.run(.sequence([
+                            .moveBy(x: 5 * explorer.facing, y: 0, duration: 0.04),
+                            .moveBy(x: -5 * explorer.facing, y: 0, duration: 0.04)
+                        ]))
+                    }
+                    if explorer.gatherTimer >= 1.35 {
                         collect(target, by: explorer)
                         explorer.gatherTimer = 0
                     }
                 } else {
+                    if move(explorer, toward: target.node.position, dt: dt) {
+                        playStepIfNeeded(for: explorer, dt: dt)
+                    }
                     explorer.gatherTimer = 0
-                    explorer.status = "TO \(target.kind.title)"
+                    explorer.status = "TO TREE"
                 }
             } else {
                 scout(explorer, dt: dt)
@@ -673,9 +767,10 @@ final class GameScene: SKScene {
     }
 
     private func assignTarget(to explorer: Explorer) {
-        let available = materials.filter { $0.amount > 0 && $0.reservedBy == nil }
+        let available = materials.filter { $0.kind == .wood && $0.amount > 0 && $0.reservedBy == nil }
         guard !available.isEmpty else {
-            explorer.status = "FIELD CLEAR"
+            explorer.status = "NO TREES"
+            explorer.action = .idle
             return
         }
         let current = explorer.node.position
@@ -687,17 +782,11 @@ final class GameScene: SKScene {
     }
 
     private func targetScore(_ spot: MaterialSpot, from point: CGPoint) -> CGFloat {
+        guard spot.kind == .wood else { return .greatestFiniteMagnitude }
         let distance = point.distance(to: spot.node.position)
         let column = Int(spot.node.position.x / tileSize)
         let discoveryBonus: CGFloat = discoveredColumns.contains(column) ? 130 : -220
-        let rarityBias: CGFloat
-        switch spot.kind {
-        case .wood, .stone: rarityBias = 0
-        case .herb: rarityBias = -45
-        case .ore: rarityBias = -70
-        case .crystal: rarityBias = -110
-        }
-        return distance + discoveryBonus + rarityBias
+        return distance + discoveryBonus
     }
 
     private func scout(_ explorer: Explorer, dt: TimeInterval) {
@@ -708,18 +797,34 @@ final class GameScene: SKScene {
         }
         if let point = explorer.scoutTarget {
             explorer.status = "SCOUT"
-            move(explorer, toward: point, dt: dt)
+            if move(explorer, toward: point, dt: dt) {
+                playStepIfNeeded(for: explorer, dt: dt)
+            }
         }
     }
 
-    private func move(_ explorer: Explorer, toward point: CGPoint, dt: TimeInterval) {
+    @discardableResult
+    private func move(_ explorer: Explorer, toward point: CGPoint, dt: TimeInterval) -> Bool {
         let delta = point - explorer.node.position
-        guard delta.length > 4 else { return }
+        guard delta.length > 4 else {
+            explorer.action = .idle
+            return false
+        }
         let direction = delta.normalized()
         let speed = 124 + CGFloat(explorers.count - 1) * 4
         explorer.node.position = explorer.node.position + direction * speed * CGFloat(dt)
         explorer.node.position.x = explorer.node.position.x.clamped(to: worldMinX + 40...worldMaxX - 40)
         explorer.facing = direction.dx >= 0 ? 1 : -1
+        explorer.action = .walk
+        return true
+    }
+
+    private func playStepIfNeeded(for explorer: Explorer, dt: TimeInterval) {
+        explorer.stepSoundCooldown -= dt
+        if explorer.stepSoundCooldown <= 0 {
+            explorer.stepSoundCooldown = 0.30
+            ProceduralSfx.shared.play(.step)
+        }
     }
 
     private func snapExplorerToGround(_ explorer: Explorer) {
@@ -729,8 +834,18 @@ final class GameScene: SKScene {
 
     private func animate(_ explorer: Explorer) {
         explorer.node.xScale = explorer.facing * 1.45
-        let bob = sin(explorer.walkClock * 10) * 2
-        explorer.node.yScale = 1.45 + bob * 0.012
+        switch explorer.action {
+        case .walk:
+            let bob = sin(explorer.walkClock * 10) * 2
+            explorer.node.yScale = 1.45 + bob * 0.012
+            explorer.node.zRotation = sin(explorer.walkClock * 10) * 0.025 * explorer.facing
+        case .chop:
+            explorer.node.yScale = 1.45
+            explorer.node.zRotation = sin(explorer.gatherTimer * 22) * 0.075 * explorer.facing
+        case .idle:
+            explorer.node.yScale = 1.45
+            explorer.node.zRotation = 0
+        }
     }
 
     private func collect(_ spot: MaterialSpot, by explorer: Explorer) {
@@ -744,8 +859,10 @@ final class GameScene: SKScene {
             .removeFromParent()
         ]))
         showPopup("+\(amount) \(spot.kind.title)", at: spot.node.position + CGPoint(x: 0, y: 38), color: spot.kind.color)
+        ProceduralSfx.shared.play(.collect)
         explorer.target = nil
-        explorer.status = "SEARCH"
+        explorer.action = .idle
+        explorer.status = "TREE SEARCH"
     }
 
     private func releaseTarget(for explorer: Explorer) {
@@ -779,7 +896,7 @@ final class GameScene: SKScene {
     }
 
     private func updateHud() {
-        workerLabel.text = "EXPLORERS \(explorers.count) / SUMMONS \(summonCount)"
+        workerLabel.text = "WOODCUTTERS \(explorers.count) / SUMMONS \(summonCount)"
         let remaining = materials.count
         let task = explorers.first?.status ?? "TAP SUMMON"
         statusLabel.text = isPausedByPlayer ? "STATUS PAUSED" : "STATUS \(task)"

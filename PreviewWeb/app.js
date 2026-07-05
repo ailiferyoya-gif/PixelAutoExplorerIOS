@@ -90,23 +90,105 @@ function createMaterials() {
       x,
       y: materialY(kind, x),
       amount: randInt(data.min, data.max),
-      reservedBy: null
+      reservedBy: null,
+      shake: 0
     });
   }
 }
 
+const sound = {
+  ctx: null,
+  master: null
+};
+
+function ensureAudio() {
+  if (!sound.ctx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    sound.ctx = new AudioContextClass();
+    sound.master = sound.ctx.createGain();
+    sound.master.gain.value = 0.26;
+    sound.master.connect(sound.ctx.destination);
+  }
+  if (sound.ctx.state === "suspended") sound.ctx.resume();
+  return sound.ctx;
+}
+
+function playTone(freq, duration, type = "square", gain = 0.08, delay = 0) {
+  const ctxAudio = ensureAudio();
+  if (!ctxAudio) return;
+  const osc = ctxAudio.createOscillator();
+  const amp = ctxAudio.createGain();
+  const start = ctxAudio.currentTime + delay;
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  amp.gain.setValueAtTime(0.0001, start);
+  amp.gain.exponentialRampToValueAtTime(gain, start + 0.012);
+  amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.connect(amp);
+  amp.connect(sound.master);
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+function playNoise(duration, gain = 0.08, delay = 0) {
+  const ctxAudio = ensureAudio();
+  if (!ctxAudio) return;
+  const length = Math.max(1, Math.floor(ctxAudio.sampleRate * duration));
+  const buffer = ctxAudio.createBuffer(1, length, ctxAudio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  }
+  const src = ctxAudio.createBufferSource();
+  const filter = ctxAudio.createBiquadFilter();
+  const amp = ctxAudio.createGain();
+  const start = ctxAudio.currentTime + delay;
+  filter.type = "bandpass";
+  filter.frequency.value = 850;
+  filter.Q.value = 2.6;
+  amp.gain.setValueAtTime(gain, start);
+  amp.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  src.buffer = buffer;
+  src.connect(filter);
+  filter.connect(amp);
+  amp.connect(sound.master);
+  src.start(start);
+}
+
+function playSfx(kind) {
+  if (kind === "summon") {
+    playTone(392, 0.08, "triangle", 0.07);
+    playTone(587, 0.10, "triangle", 0.07, 0.05);
+    playTone(784, 0.14, "triangle", 0.06, 0.10);
+  } else if (kind === "step") {
+    playNoise(0.045, 0.035);
+    playTone(105, 0.045, "triangle", 0.025);
+  } else if (kind === "chop") {
+    playNoise(0.075, 0.10);
+    playTone(176, 0.055, "square", 0.07);
+    playTone(92, 0.08, "triangle", 0.045, 0.025);
+  } else if (kind === "collect") {
+    playTone(523, 0.08, "triangle", 0.07);
+    playTone(659, 0.10, "triangle", 0.06, 0.045);
+  } else if (kind === "denied") {
+    playTone(150, 0.12, "sawtooth", 0.05);
+  }
+}
+
 function canSummon() {
-  return state.summons === 0 || (state.inventory.wood >= 8 && state.inventory.stone >= 5);
+  return state.summons === 0 || state.inventory.wood >= 12;
 }
 
 function summonExplorer() {
+  ensureAudio();
   if (!canSummon()) {
-    addPopup("NEED 8 WOOD + 5 STONE", state.camera.x, state.camera.y + 90, "#ffffff");
+    playSfx("denied");
+    addPopup("NEED 12 WOOD", state.camera.x, state.camera.y + 90, "#ffffff");
     return;
   }
   if (state.summons > 0) {
-    state.inventory.wood -= 8;
-    state.inventory.stone -= 5;
+    state.inventory.wood -= 12;
   }
   state.summons += 1;
   const x = rand(-20, 20);
@@ -118,12 +200,16 @@ function summonExplorer() {
     scoutX: null,
     gather: 0,
     clock: 0,
+    stepTimer: 0,
+    chopTimer: 0,
     face: 1,
-    status: "SEARCH",
-    color: ["#2e8ad6", "#c7576b", "#6b9e47", "#ad7adb"][(state.summons - 1) % 4]
+    action: "idle",
+    status: "TREE SEARCH",
+    color: ["#4f8d3f", "#8f6a32", "#3d7f58", "#9a743c"][(state.summons - 1) % 4]
   };
   state.explorers.push(explorer);
-  addPopup(`SUMMONED #${state.summons}`, explorer.x, explorer.y + 64, "#ffd84b");
+  playSfx("summon");
+  addPopup(`WOODCUTTER #${state.summons}`, explorer.x, explorer.y + 64, "#ffd84b");
 }
 
 function distance(ax, ay, bx, by) {
@@ -131,10 +217,10 @@ function distance(ax, ay, bx, by) {
 }
 
 function scoreMaterial(material, explorer) {
+  if (material.kind !== "wood") return Infinity;
   const column = Math.round(material.x / world.tile);
   const discoveryBonus = state.discovered.has(column) ? 130 : -220;
-  const rarityBias = { wood: 0, stone: 0, herb: -45, ore: -70, crystal: -110 }[material.kind];
-  return distance(explorer.x, explorer.y, material.x, material.y) + discoveryBonus + rarityBias;
+  return distance(explorer.x, explorer.y, material.x, material.y) + discoveryBonus;
 }
 
 function assignTarget(explorer) {
@@ -142,6 +228,7 @@ function assignTarget(explorer) {
   let bestScore = Infinity;
   for (const material of state.materials) {
     if (material.amount <= 0 || material.reservedBy) continue;
+    if (material.kind !== "wood") continue;
     const score = scoreMaterial(material, explorer);
     if (score < bestScore) {
       best = material;
@@ -152,7 +239,8 @@ function assignTarget(explorer) {
     best.reservedBy = explorer.id;
     explorer.target = best;
   } else {
-    explorer.status = "FIELD CLEAR";
+    explorer.status = "NO TREES";
+    explorer.action = "idle";
   }
 }
 
@@ -160,11 +248,19 @@ function moveToward(explorer, x, y, dt) {
   const dx = x - explorer.x;
   const dy = y - explorer.y;
   const length = Math.hypot(dx, dy);
-  if (length < 4) return;
+  if (length < 4) return false;
   const speed = 124 + Math.max(0, state.explorers.length - 1) * 4;
   explorer.x = clamp(explorer.x + (dx / length) * speed * dt, world.minX + 40, world.maxX - 40);
   explorer.y += (dy / length) * speed * dt;
   explorer.face = dx >= 0 ? 1 : -1;
+  explorer.action = "walk";
+  return true;
+}
+
+function updateMaterials(dt) {
+  for (const material of state.materials) {
+    material.shake = Math.max(0, (material.shake || 0) - dt * 3.6);
+  }
 }
 
 function updateExplorers(dt) {
@@ -177,22 +273,36 @@ function updateExplorers(dt) {
     if (!explorer.target) assignTarget(explorer);
     if (explorer.target) {
       const target = explorer.target;
-      moveToward(explorer, target.x, target.y, dt);
       const near = distance(explorer.x, explorer.y, target.x, target.y) < 64;
       if (near) {
         explorer.gather += dt;
-        explorer.status = `GATHER ${kinds[target.kind].title}`;
-        if (explorer.gather >= 0.72) {
+        explorer.action = "chop";
+        explorer.status = "CHOP WOOD";
+        explorer.chopTimer -= dt;
+        if (explorer.chopTimer <= 0) {
+          explorer.chopTimer = 0.34;
+          target.shake = 1;
+          playSfx("chop");
+        }
+        if (explorer.gather >= 1.35) {
           state.inventory[target.kind] += target.amount;
           addPopup(`+${target.amount} ${kinds[target.kind].title}`, target.x, target.y + 38, kinds[target.kind].color);
           state.materials = state.materials.filter((item) => item.id !== target.id);
+          playSfx("collect");
           explorer.target = null;
           explorer.gather = 0;
-          explorer.status = "SEARCH";
+          explorer.status = "TREE SEARCH";
+          explorer.action = "idle";
         }
       } else {
+        const moved = moveToward(explorer, target.x, target.y, dt);
+        explorer.stepTimer -= dt;
+        if (moved && explorer.stepTimer <= 0) {
+          explorer.stepTimer = 0.28;
+          playSfx("step");
+        }
         explorer.gather = 0;
-        explorer.status = `TO ${kinds[target.kind].title}`;
+        explorer.status = "TO TREE";
       }
     } else {
       if (explorer.scoutX === null || Math.abs(explorer.x - explorer.scoutX) < 40) {
@@ -200,7 +310,12 @@ function updateExplorers(dt) {
         explorer.scoutX = clamp(explorer.x + direction * rand(360, 820), world.minX + 80, world.maxX - 80);
       }
       explorer.status = "SCOUT";
-      moveToward(explorer, explorer.scoutX, surfaceY(explorer.scoutX) + 58, dt);
+      const moved = moveToward(explorer, explorer.scoutX, surfaceY(explorer.scoutX) + 58, dt);
+      explorer.stepTimer -= dt;
+      if (moved && explorer.stepTimer <= 0) {
+        explorer.stepTimer = 0.32;
+        playSfx("step");
+      }
     }
     explorer.y += (surfaceY(explorer.x) + 58 - explorer.y) * 0.18;
     const center = Math.round(explorer.x / world.tile);
@@ -485,7 +600,13 @@ function drawMaterial(material) {
   const x = material.x;
   const y = surfaceY(x);
   if (material.kind === "wood") {
-    drawCanopyTree(x, y, Math.round(x), 1.0);
+    const wobble = Math.sin(performance.now() / 28) * (material.shake || 0) * 5;
+    drawCanopyTree(x + wobble, y, Math.round(x), 1.0);
+    if ((material.shake || 0) > 0.2) {
+      drawRectFromGround(x + 8, y, 15, 8, 4, "#f4d29b");
+      drawRectFromGround(x + 18, y, 23, 4, 4, "#ffdca8");
+      drawRectFromGround(x - 15, y, 8, 3, 3, "#d49a52");
+    }
   } else if (material.kind === "stone") {
     drawRectFromGround(x - 8, y, 0, 24, 9, "#4c535c");
     drawRectFromGround(x + 8, y, 3, 22, 10, data.color);
@@ -531,33 +652,47 @@ function drawGate() {
 
 function drawExplorer(explorer) {
   const x = explorer.x;
+  const walk = explorer.action === "walk" ? Math.sin(explorer.clock * 12) : 0;
+  const chop = explorer.action === "chop" ? Math.sin(explorer.gather * 22) : 0;
   const footY = explorer.y - 58 + Math.sin(explorer.clock * 10) * 2;
   const face = explorer.face;
-  drawRectFromGround(x - 10, footY, 0, 8, 6, "#11151b");
-  drawRectFromGround(x + 7, footY, 0, 8, 6, "#11151b");
-  drawRectFromGround(x - 9, footY, 6, 6, 17, "#252c36");
-  drawRectFromGround(x + 8, footY, 6, 6, 17, "#303846");
-  drawRectFromGround(x - 1, footY, 22, 28, 28, "#151922");
+  drawRectFromGround(x - 10 - walk * 2, footY, 0, 8, 6, "#2a1b12");
+  drawRectFromGround(x + 7 + walk * 2, footY, 0, 8, 6, "#2a1b12");
+  drawRectFromGround(x - 9 + walk * 1.5, footY, 6, 6, 17, "#3f2b1c");
+  drawRectFromGround(x + 8 - walk * 1.5, footY, 6, 6, 17, "#57381f");
+  drawRectFromGround(x - 1, footY, 22, 28, 28, "#1a1710");
   drawRectFromGround(x - 2, footY, 24, 20, 24, explorer.color);
-  drawRectFromGround(x - 9, footY, 25, 5, 21, "#6f3bc4");
-  drawRectFromGround(x + 8, footY, 27, 5, 18, "#b35ff0");
-  drawRectFromGround(x, footY, 32, 24, 3, "#f0ce5b");
-  drawRectFromGround(x - 2, footY, 35, 5, 5, "#6a3a1f");
+  drawRectFromGround(x - 9, footY, 25, 5, 21, "#8b5d2a");
+  drawRectFromGround(x + 8, footY, 27, 5, 18, "#d39a45");
+  drawRectFromGround(x, footY, 32, 24, 3, "#e6c76a");
+  drawRectFromGround(x - 2, footY, 35, 5, 5, "#5c351d");
   drawRectFromGround(x - 1, footY, 47, 21, 17, "#f3b978");
-  drawRectFromGround(x - 11, footY, 43, 5, 12, "#2c1a13");
-  drawRectFromGround(x + 10, footY, 43, 5, 12, "#2c1a13");
-  drawRectFromGround(x - 1, footY, 59, 28, 7, "#1f120f");
-  drawRectFromGround(x - 1, footY, 66, 20, 5, "#2c1a13");
+  drawRectFromGround(x - 11, footY, 43, 5, 12, "#4a2a19");
+  drawRectFromGround(x + 10, footY, 43, 5, 12, "#4a2a19");
+  drawRectFromGround(x - 1, footY, 59, 30, 6, "#c7903b");
+  drawRectFromGround(x - 1, footY, 65, 22, 5, "#f0c45b");
+  drawRectFromGround(x - 1, footY, 71, 14, 5, "#8a5a24");
   drawRectFromGround(x - 5 * face, footY, 54, 2, 2, "#090909");
   drawRectFromGround(x + 5 * face, footY, 54, 2, 2, "#090909");
   drawRectFromGround(x + 7 * face, footY, 49, 6, 2, "#8a4a32");
   drawRectFromGround(x - 15, footY, 24, 5, 12, "#7c4c2d");
   drawRectFromGround(x + 13, footY, 26, 5, 12, "#f3b978");
-  drawPixelStepsFromGround(x + 13 * face, footY, 16, 8, 2 * face, 6, 3, "#7a623e");
-  drawPixelStepsFromGround(x + 22 * face, footY, 54, 5, 3 * face, 5, 4, "#62e7f0");
-  drawPixelStepsFromGround(x + 28 * face, footY, 73, 3, 2 * face, 5, 3, "#eaffff");
-  drawRectFromGround(x - 14 * face, footY, 51, 4, 4, "#ffffff");
-  drawRectFromGround(x - 15 * face, footY, 57, 4, 6, "#4bd6ff");
+  const axeBaseX = x + 14 * face;
+  if (explorer.action === "chop") {
+    const raised = chop > 0 ? 1 : -1;
+    drawPixelStepsFromGround(axeBaseX, footY, 24 + raised * 6, 8, 3 * face, 5 * raised, 3, "#7a4d28");
+    drawRectFromGround(x + 36 * face, footY, 51 + raised * 17, 13, 5, "#aeb8be");
+    drawRectFromGround(x + 42 * face, footY, 47 + raised * 17, 6, 9, "#dbe7ea");
+    drawRectFromGround(x + 30 * face, footY, 50 + raised * 17, 5, 8, "#6f7b82");
+  } else {
+    drawPixelStepsFromGround(axeBaseX, footY, 18, 8, 2 * face, 5, 3, "#7a4d28");
+    drawRectFromGround(x + 28 * face, footY, 57, 12, 5, "#aeb8be");
+    drawRectFromGround(x + 34 * face, footY, 53, 5, 9, "#dbe7ea");
+  }
+  if (explorer.action === "chop" && chop < -0.25) {
+    drawRectFromGround(x + 38 * face, footY, 22, 3, 3, "#f4d29b");
+    drawRectFromGround(x + 46 * face, footY, 29, 3, 3, "#ffdca8");
+  }
 }
 
 function drawPopups() {
@@ -586,7 +721,7 @@ function draw() {
 }
 
 function updateUi() {
-  ui.workers.textContent = `EXPLORERS ${state.explorers.length} / SUMMONS ${state.summons}`;
+  ui.workers.textContent = `WOODCUTTERS ${state.explorers.length} / SUMMONS ${state.summons}`;
   const task = state.explorers[0] ? state.explorers[0].status : "TAP SUMMON";
   ui.status.textContent = state.paused ? "STATUS PAUSED" : `STATUS ${task}`;
   ui.field.textContent = `FIELD ${world.maxX - world.minX}px / NODES ${state.materials.length}`;
@@ -617,7 +752,10 @@ function updateUi() {
 function tick(now) {
   const dt = Math.min((now - state.lastTime) / 1000, 1 / 20);
   state.lastTime = now;
-  if (!state.paused) updateExplorers(dt);
+  if (!state.paused) {
+    updateExplorers(dt);
+    updateMaterials(dt);
+  }
   updateCamera();
   updatePopups(dt);
   draw();

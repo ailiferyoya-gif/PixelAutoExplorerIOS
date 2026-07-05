@@ -8,6 +8,9 @@
 - `ContentView.swift` hosts the SpriteKit scene full screen.
 - Xcode project and shared scheme are included.
 - Browser-checkable GitHub Pages preview lives in `PreviewWeb/`.
+- GitHub repo: `https://github.com/ailiferyoya-gif/PixelAutoExplorerIOS`
+- Published preview: `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/`
+- Last verified commit: `c5c989a`
 
 ## Implemented
 
@@ -28,17 +31,20 @@
 - The target folder did not exist before this MVP, so there was no previous project to copy.
 - A creation note was placed under `D:\Codex\backups` before writing the new D-drive project.
 - A pre-preview backup was created before adding Web preview and Pages files.
+- A pre-publish-notes backup was created before this handoff update.
 
 ## Verification
 
 - File-level structure was checked locally.
-- Browser preview should be tested through `PreviewWeb/index.html` or GitHub Pages after publish.
+- `PreviewWeb/app.js` passed `node --check`.
+- Local browser preview loaded, summoned an explorer, collected materials, and reported no console errors.
+- GitHub Pages live URL loaded, summoned an explorer, collected materials, and reported no console errors.
+- Root Pages URL redirects to `PreviewWeb/`.
 - Native iOS build was not run because this Windows environment has no `swift`, `xcodebuild`, or XcodeBuildMCP simulator tool available.
 
 ## Next Recommended Work
 
 - Build once in Xcode on macOS and fix any compiler warnings.
-- After GitHub push, verify `https://ailiferyoya-gif.github.io/PixelAutoExplorerIOS/PreviewWeb/`.
 - Add offline save/load for inventory, explorer count, and depleted material nodes.
 - Add a proper summon roster and explorer traits.
 - Add deeper terrain layers, caves, and return-to-base delivery loops.

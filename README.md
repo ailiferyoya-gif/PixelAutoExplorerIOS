@@ -14,6 +14,12 @@ Terraria-like pixel idle exploration MVP for iPhone. The first interaction is su
 
 ## Web Preview
 
+Repository:
+
+```text
+https://github.com/ailiferyoya-gif/PixelAutoExplorerIOS
+```
+
 GitHub Pages serves the browser preview from:
 
 ```text
@@ -34,4 +40,4 @@ Then run the `PixelAutoExplorerIOS` scheme on an iPhone simulator or device.
 
 ## Local Verification Note
 
-This Windows Codex environment does not currently expose `swift`, `xcodebuild`, or the XcodeBuildMCP simulator tools, so native compilation was not run here. The project is structured as a minimal Xcode iOS app and should be built in Xcode on macOS for the first device check.
+This Windows Codex environment does not currently expose `swift`, `xcodebuild`, or the XcodeBuildMCP simulator tools, so native compilation was not run here. The GitHub Pages preview was browser-tested after publishing: the page loaded, the summon button worked, materials were collected, and no browser console errors were reported.
